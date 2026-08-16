@@ -37,6 +37,62 @@ zsh: no such hash table element: gwipe    # ← 危險的已被移除，正確
 
 ---
 
+## 從舊習慣遷移
+
+| 舊習慣 | 意思 | 現在打 | 要改嗎 |
+|---|---|---|---|
+| `gac "msg"` | `git add . && git commit -m` | **`gac "msg"`** | ❌ 不用改，刻意保留了這個名字 |
+| `gc <分支>` | `git checkout` | **`gco <分支>`** | ✅ 多打一個 `o` |
+| `gpoh` | `git push origin HEAD` | **`gpushu`** → 之後 `gpush` | ✅ 而且比舊的省事 |
+
+### 為什麼 `gac` 可以保留、`gc` 不行
+
+差別在**「到了沒有你設定的機器上會發生什麼」**：
+
+| | 別台機器上 | 安全嗎 |
+|---|---|---|
+| `gac` | `command not found` | ✅ 大聲失敗，立刻知道 |
+| `gc` = checkout | **執行 `git commit`**（oh-my-zsh 的定義） | ❌ 靜默做別的事 |
+
+`gac` 這個名字 oh-my-zsh 沒用，拿來用完全安全。
+`gc` 則是那 197 個 alias 之一，全世界的機器上都是 `git commit` ——
+覆蓋它等於給自己埋一顆地雷。
+
+### `gpoh` → `gpushu` 不只是改名
+
+舊寫法 `git push origin HEAD` **不會建立追蹤關係**，所以每次都得再打一次：
+
+```bash
+gpoh          # 推上去了
+git push      # ✗ 還是 fatal: no upstream
+gpoh          # 只好又打一次…永遠回不到單純的 git push
+```
+
+`-u`（`--set-upstream`）只需要一次：
+
+```bash
+gpushu        # 推上去，同時建立追蹤關係
+gpush         # ✓ 之後永遠只要這樣
+gpull         # ✓ 拉取也自動知道去哪
+```
+
+### 記憶方式
+
+```
+git      → g
+add      → a          gaa  = add --all
+commit   → c          gc   = commit
+checkout → co         gco  = checkout       ← 要改的
+diff     → d          gds  = diff --staged
+push     → gpush      gpushu = push -u      ← 要改的
+pull     → gpull
+```
+
+**`co` 而不是 `c`，是因為 `c` 被 commit 佔走了。**
+checkout 排第二順位，所以拿兩個字母。
+
+---
+
 ## 先學這 12 個
 
 一次記 40 個會失敗。這 12 個涵蓋日常八成情境，用熟了其他自然會滲透進來。
