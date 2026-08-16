@@ -109,21 +109,43 @@ fatal: user.email is not set and useConfigOnly is set
 ### 安裝
 
 ```bash
-git clone <這個 repo> ~/dotfiles        # 用你自己的帳號，不要用 root
+git clone https://github.com/benchen0812/dotfiles.git ~/dotfiles
+cd ~/dotfiles
+
+./work-install.sh -n     # 乾跑：只顯示會做什麼，不動任何檔案
+./work-install.sh        # 實際安裝
+exec zsh                 # 生效
 ```
 
-在現有 `~/.zshrc` 的**最後一行**加：
-
-```zsh
-[ -f ~/dotfiles/shell/work-profile.sh ] && source ~/dotfiles/shell/work-profile.sh
-```
+移除：
 
 ```bash
-exec zsh
+cd ~/dotfiles && ./work-install.sh -u
 ```
 
+### `work-install.sh` 做了什麼
+
+它在你現有的 `.zshrc`（或 `.bashrc`）**最後**加一個標記區塊：
+
+```zsh
+# >>> dotfiles work-profile >>>
+[ -f "/Users/你/dotfiles/shell/work-profile.sh" ] && source "..."
+# <<< dotfiles work-profile <<<
+```
+
+**為什麼要用腳本而不是手打 `echo >> ~/.zshrc`：**
+
+| 風險 | 腳本怎麼處理 |
+|---|---|
+| `>>` 打成 `>` → **整個 `.zshrc` 被清空** | 不會有這個機會 |
+| 重複執行 → 加兩次 source | 偵測標記，已安裝就不做事 |
+| 移除時要手動找到那行刪掉 | `-u` 一鍵移除，用標記精準定位 |
+| 改壞了想還原 | 每次修改前自動備份成 `.zshrc.bak.<時間戳>` |
+
+`.zshrc` / `.bashrc` 由 `$SHELL` 自動判斷，不用你指定。
+
 **一定要加在最後面** —— 才蓋得過前面 oh-my-zsh 的定義（後定義的贏）。
-前面的 `[ -f ... ] &&` 是保險：檔案不在時靜默跳過，不會噴錯。
+`[ -f ... ] &&` 是保險：檔案不在時靜默跳過，不會噴錯。
 
 ### 它做什麼、不做什麼
 
@@ -300,6 +322,7 @@ git-audit && echo "確認安全，可以進行破壞性操作"
 ~/dotfiles/
 ├── bootstrap.sh              新機器：裝套件、clone omz 與 plugin、產生身分範本
 ├── install.sh                建立符號連結（-n 可乾跑）
+├── work-install.sh           最小安裝：只在現有 .zshrc 加一段（-n 乾跑 / -u 移除）
 ├── MANIFEST.md               ★ 每個檔案是什麼、為什麼、以及「刻意不做什麼」
 ├── git/
 │   └── .gitconfig            → ~/.gitconfig  （純行為，不含身分）

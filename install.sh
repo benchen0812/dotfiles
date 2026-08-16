@@ -40,7 +40,12 @@ link_one() {
 
   # 已經是指向正確位置的連結：什麼都不用做。
   # 這一段就是「冪等」的關鍵 —— 重跑不會產生額外動作。
-  if [[ -L "$dst" && "$(readlink -f "$dst")" == "$(readlink -f "$src")" ]]; then
+  #
+  # ⚠️ 用 readlink 而不是 readlink -f：
+  #    -f（完全解析所有中間連結）是 GNU 專有的，macOS 的 BSD readlink 沒有，
+  #    會直接報錯。不加 -f 只回傳「這個連結直接指向哪」，兩個平台都支援。
+  #    我們建立連結時 $src 本來就是絕對路徑，所以直接比對就夠了。
+  if [[ -L "$dst" && "$(readlink "$dst")" == "$src" ]]; then
     info "已是最新 $2"
     return
   fi

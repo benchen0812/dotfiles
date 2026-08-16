@@ -22,22 +22,36 @@ act()  { printf '\n\033[1m%s\033[0m\n' "$*"; }
 # fd-find 取代 find，語法人性化
 # bat   取代 cat，語法高亮 + 行號
 # shellcheck 寫 bash 時即時抓錯，比讀任何教材都有效
-PACKAGES=(zsh git curl vim tmux fzf zoxide ripgrep fd-find bat shellcheck)
+# 套件名稱在不同系統上不一樣：
+#   Debian/Ubuntu 為了避免與既有套件衝突，把 fd 叫 fd-find、bat 叫 bat（但執行檔是 batcat）
+#   Homebrew 直接叫 fd 和 bat
+APT_PACKAGES=(zsh git curl vim tmux fzf zoxide ripgrep fd-find bat shellcheck)
+BREW_PACKAGES=(zsh git curl vim tmux fzf zoxide ripgrep fd bat shellcheck)
 
 act "安裝系統套件"
 if command -v apt >/dev/null 2>&1; then
   sudo apt update
-  sudo apt install -y "${PACKAGES[@]}"
+  sudo apt install -y "${APT_PACKAGES[@]}"
+elif command -v brew >/dev/null 2>&1; then
+  brew install "${BREW_PACKAGES[@]}"
 else
-  info "非 apt 系統，請自行安裝：${PACKAGES[*]}"
+  info "找不到 apt 或 brew。請自行安裝："
+  info "  ${BREW_PACKAGES[*]}"
+  info "（macOS 請先裝 Homebrew：https://brew.sh）"
 fi
 
-# Debian/Ubuntu 把這兩個工具改了名字，避免與既有套件衝突。
+# Debian/Ubuntu 把這兩個執行檔改了名字，避免與既有套件衝突。
 # 建立連結讓它們用大家熟悉的名字。
+# macOS（Homebrew）沒有這個問題，下面兩行會因為檔案不存在而跳過。
 act "修正 Debian 系的指令改名"
 mkdir -p "$HOME/.local/bin"
-[[ -x /usr/bin/fdfind  ]] && ln -sf /usr/bin/fdfind  "$HOME/.local/bin/fd"  && info "fdfind → fd"
-[[ -x /usr/bin/batcat  ]] && ln -sf /usr/bin/batcat  "$HOME/.local/bin/bat" && info "batcat → bat"
+if [[ -x /usr/bin/fdfind ]]; then
+  ln -sf /usr/bin/fdfind "$HOME/.local/bin/fd"  && info "fdfind → fd"
+fi
+if [[ -x /usr/bin/batcat ]]; then
+  ln -sf /usr/bin/batcat "$HOME/.local/bin/bat" && info "batcat → bat"
+fi
+command -v fd >/dev/null 2>&1 || info "（此系統無需改名，或 fd 尚未安裝）"
 
 # ── oh-my-zsh ────────────────────────────────────────────────────────
 act "oh-my-zsh"
