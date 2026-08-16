@@ -266,18 +266,65 @@ $ shellcheck install.sh
 
 ---
 
-## 只要 git alias（公司機器適用）
+## 只要 git 工具（公司機器適用）
 
-不想裝整套、或沒有權限時，**只複製一個檔案就能用**：
+不想裝整套、或沒有權限時，**只複製 `shell/` 裡的檔案就能用**：
 
 ```bash
-scp ~/dotfiles/shell/git-aliases.sh 目標機器:~/
-echo 'source ~/git-aliases.sh' >> ~/.zshrc    # 必須加在最後面
+scp ~/dotfiles/shell/git-aliases.sh ~/dotfiles/shell/git-audit.sh 目標機器:~/
+cat >> ~/.zshrc <<'EOF'
+source ~/git-aliases.sh
+source ~/git-audit.sh
+EOF
 exec zsh
 ```
 
-那個檔案自足、零相依、bash 與 zsh 都能用。
+`git-aliases.sh` 必須加在**最後面**（要蓋過 oh-my-zsh 的定義）。
+兩個檔案都自足、零相依、bash 與 zsh 都能用。
 詳細說明見 [`shell/README.md`](shell/README.md)。
+
+---
+
+## `git-audit` —— 機器消失前的檢查
+
+**重灌、換機器、砍掉 WSL 發行版之前，先跑這個。**
+
+```bash
+$ git-audit                # 掃描家目錄
+$ git-audit ~/projects     # 掃描指定目錄
+```
+
+```
+~/ubuntu-project/cat-history
+  ✗ 分支 master：領先 origin/master 9 個 commit（未推送）
+
+~/ubuntu-project/investment-advisor
+  ✗ 分支 feature/phase1-db：無 upstream，本地 5 個 commit
+  ✗ 2 個未提交的變更
+
+─────────────────────────────────────────
+⚠  4 個 repo 有風險
+   15 個 commit 只存在這台機器
+   5 個未提交的檔案
+```
+
+### 為什麼需要工具，不能靠手動看
+
+**手動檢查會漏，而且是系統性地漏 —— 你只會看當前分支。**
+
+`git status` 顯示乾淨、當前分支也跟遠端同步，看起來完全安全。
+但另一條 feature 分支上可能有五個 commit 從來沒推過，那條分支你根本沒切過去看。
+
+這個工具逐一檢查**每一條分支**，加上未提交的變更與 stash。
+
+> stash 特別危險：它**不在 reflog 裡**。commit 過的東西還能靠 reflog 救，
+> stash 一旦隨機器消失就真的找不回來。
+
+回傳值可以串進腳本：
+
+```bash
+git-audit && echo "確認安全，可以進行破壞性操作"
+```
 
 ---
 
