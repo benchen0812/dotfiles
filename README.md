@@ -189,15 +189,70 @@ alias | grep -c fzf         # oh-my-zsh 的 fzf plugin 有沒有啟用
 
 fzf 完整用法見 [`shell/TOOLS.md`](shell/TOOLS.md)。
 
-### 檔案怎麼同步到公司機器
+### 公司機器怎麼取得這個 repo（唯讀）
 
-| 方法 | 之後的更新 |
-|---|---|
-| **GitHub private repo** | `git pull` 就有 ← 建議 |
-| 手動複製 | 每次都要重來一次，**必然會不同步** |
+repo 是 private，而**公司機器只需要能 clone，不需要寫入**。
 
-手動複製會重演「repo 停在某一版、兩邊安靜分岔」的老路。
-這個 repo 的存在意義就是讓每台機器行為一致 —— 沒有同步機制的話那個意義就消失了。
+用 **Deploy Key** —— 綁在單一 repo 上的 SSH 金鑰，預設唯讀，
+而且**完全不牽涉任何 GitHub 帳號**。
+
+| 方式 | 存取範圍 | 牽涉公司帳號 | 可寫入 |
+|---|---|---|---|
+| **Deploy Key** ← 用這個 | **只有這一個 repo** | **完全不** | **預設不行** |
+| 公司帳號加為 collaborator | 這一個 repo | 會（SSO 環境下管理員可能看得到） | 可以 |
+| 在公司機器用個人 SSH 金鑰 | **你所有的 repo** ← 太寬 | 不會 | 可以 |
+
+#### 步驟
+
+**1. 在公司機器產生一把專用金鑰**
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/dotfiles_deploy -C "dotfiles deploy key" -N ""
+cat ~/.ssh/dotfiles_deploy.pub
+```
+
+`-N ""` 是不設密碼（自動 clone 時不會卡住）。
+私鑰只存在那台機器上，**不要傳到任何地方**。
+
+**2. 把公鑰加到 repo**
+
+到 `https://github.com/<你>/dotfiles/settings/keys` → **Add deploy key**
+
+- Title：填機器名稱（例如 `work-laptop`）
+- Key：貼上剛才 `cat` 出來的內容
+- **⚠️ 不要勾 "Allow write access"** —— 保持唯讀
+
+**3. 設定 SSH 別名**
+
+在公司機器的 `~/.ssh/config` 加：
+
+```
+Host github-dotfiles
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/dotfiles_deploy
+    IdentitiesOnly yes
+```
+
+`IdentitiesOnly yes` 很重要：沒有這行，ssh 會把機器上**所有**金鑰都試一遍，
+可能誤用到公司的金鑰。
+
+**4. Clone**
+
+```bash
+git clone git@github-dotfiles:benchen0812/dotfiles.git ~/dotfiles
+```
+
+注意主機名是 `github-dotfiles`（上面設的別名），不是 `github.com`。
+
+**5. 之後更新**
+
+```bash
+cd ~/dotfiles && git pull
+```
+
+因為是唯讀，公司機器**不能**也**不會**推東西回來 —— 這是刻意的。
+所有修改都在你自己的機器上做，公司那邊只消費。
 
 ---
 
