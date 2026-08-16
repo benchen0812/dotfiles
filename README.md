@@ -7,6 +7,19 @@
 
 ---
 
+# 兩種安裝情境
+
+| | 情境一：完整安裝 | 情境二：最小安裝 |
+|---|---|---|
+| **適用** | 你自己的機器、全新環境 | **公司機器**、不想動現有設定 |
+| **會做什麼** | 取代 `.zshrc` / `.gitconfig`（符號連結）、裝套件 | **只在現有 `.zshrc` 加一行** |
+| **動到現有設定嗎** | 會（原檔備份） | **完全不動** |
+| **需要 sudo** | 要 | 不用 |
+| **怎麼移除** | 從備份還原 | **刪掉那一行** |
+| **拿到什麼** | 全部 | git alias + `git-audit` |
+
+---
+
 ## 情境一：完整安裝（你自己的機器）
 
 ```bash
@@ -85,6 +98,239 @@ fatal: user.email is not set and useConfigOnly is set
 **不會噴任何警告**，只是少了那些功能。
 
 代價是沒有 fzf 的 `Ctrl-R`、沒有灰字歷史建議、沒有語法上色。
+
+---
+
+## 情境二：公司機器（最小安裝）
+
+**適用時機**：那台機器已經有你自己的 `.zshrc`，可能很亂但能跑，
+而你現在沒時間整理，也不想在忙的時候搞壞能用的環境。
+
+### 安裝
+
+```bash
+git clone <這個 repo> ~/dotfiles        # 用你自己的帳號，不要用 root
+```
+
+在現有 `~/.zshrc` 的**最後一行**加：
+
+```zsh
+[ -f ~/dotfiles/shell/work-profile.sh ] && source ~/dotfiles/shell/work-profile.sh
+```
+
+```bash
+exec zsh
+```
+
+**一定要加在最後面** —— 才蓋得過前面 oh-my-zsh 的定義（後定義的贏）。
+前面的 `[ -f ... ] &&` 是保險：檔案不在時靜默跳過，不會噴錯。
+
+### 它做什麼、不做什麼
+
+| ✅ 會做 | ❌ 不會做 |
+|---|---|
+| 載入 46 個 git alias | 碰 `~/.zshrc`（不建符號連結） |
+| 移除 13 個危險 alias | 碰 `~/.gitconfig`（**公司身分在裡面**） |
+| 載入 `git-audit` 函式 | 碰 `~/.p10k.zsh` |
+| | 裝任何套件 |
+
+### 移除
+
+刪掉那一行，`exec zsh`。環境立刻回到原狀。
+**一行加、一行刪，完全可逆** —— 這是它跟 `install.sh` 的根本差別。
+
+### ⚠️ `gp` 和 `gl` 會消失
+
+`git-aliases.sh` 移除的 13 個裡面，有兩個不是破壞性的：
+
+| 移除 | 原本是 | 改用 |
+|---|---|---|
+| `gp` | `git push` | `gpush` |
+| `gl` | `git pull` | `gpull` |
+
+移除 `gl` 是因為它緊鄰 `glo` / `glog` / `glg`（都是 log），少打一個字母
+就從「看歷史」變成「拉取」。
+
+**如果換習慣正是你的目的，這是刻意的機制。**
+不想改的話，在 `work-profile.sh` 的 source 之後補回來：
+
+```zsh
+alias gp='git push'
+alias gl='git pull'
+```
+
+### 也想要 fzf？
+
+`work-profile.sh` **不裝任何東西**，所以 fzf 不在裡面。但如果那台機器
+已經有 fzf（或你裝得起來），可以另外加。
+
+先檢查：
+
+```bash
+command -v fzf              # 有沒有裝
+alias | grep -c fzf         # oh-my-zsh 的 fzf plugin 有沒有啟用
+```
+
+| 情況 | 做法 |
+|---|---|
+| 有 fzf、`plugins` 已含 `fzf` | **什麼都不用做**，`Ctrl-R` / `Ctrl-T` 已經能用 |
+| 有 fzf、但 plugin 沒啟用 | 在現有 `.zshrc` 的 `plugins=(...)` 加上 `fzf` |
+| 沒有 fzf | `sudo apt install fzf`（需要權限） |
+
+裝好之後想要我們的優化設定（用 `fd` 掃描、`bat` 預覽），
+把 `zsh/custom/50-tools.zsh` 也 source 進去：
+
+```zsh
+[ -f ~/dotfiles/zsh/custom/50-tools.zsh ] && source ~/dotfiles/zsh/custom/50-tools.zsh
+```
+
+那個檔案裡每一項都用 `command -v` 守住 —— **沒裝 fd / bat / zoxide 的機器會靜默跳過**，
+不會噴錯，所以加了也安全。
+
+fzf 完整用法見 [`shell/TOOLS.md`](shell/TOOLS.md)。
+
+### 檔案怎麼同步到公司機器
+
+| 方法 | 之後的更新 |
+|---|---|
+| **GitHub private repo** | `git pull` 就有 ← 建議 |
+| 手動複製 | 每次都要重來一次，**必然會不同步** |
+
+手動複製會重演「repo 停在某一版、兩邊安靜分岔」的老路。
+這個 repo 的存在意義就是讓每台機器行為一致 —— 沒有同步機制的話那個意義就消失了。
+
+---
+
+## `git-audit` —— 機器消失前的檢查
+
+**重灌、換機器、砍掉 WSL 發行版之前，先跑這個。**
+
+```bash
+$ git-audit                # 掃描家目錄
+$ git-audit ~/projects     # 掃描指定目錄
+```
+
+```
+~/ubuntu-project/cat-history
+  ✗ 分支 master：領先 origin/master 9 個 commit（未推送）
+
+~/ubuntu-project/investment-advisor
+  ✗ 分支 feature/phase1-db：無 upstream，本地 5 個 commit
+  ✗ 2 個未提交的變更
+
+─────────────────────────────────────────
+⚠  4 個 repo 有風險
+   15 個 commit 只存在這台機器
+   5 個未提交的檔案
+```
+
+### 為什麼需要工具，不能靠手動看
+
+**手動檢查會漏，而且是系統性地漏 —— 你只會看當前分支。**
+
+`git status` 顯示乾淨、當前分支也跟遠端同步，看起來完全安全。
+但另一條 feature 分支上可能有五個 commit 從來沒推過，那條分支你根本沒切過去看。
+
+這個工具逐一檢查**每一條分支**，加上未提交的變更與 stash。
+
+> stash 特別危險：它**不在 reflog 裡**。commit 過的東西還能靠 reflog 救，
+> stash 一旦隨機器消失就真的找不回來。
+
+回傳值可以串進腳本：
+
+```bash
+git-audit && echo "確認安全，可以進行破壞性操作"
+```
+
+---
+
+## 結構
+
+```
+~/dotfiles/
+├── bootstrap.sh              新機器：裝套件、clone omz 與 plugin、產生身分範本
+├── install.sh                建立符號連結（-n 可乾跑）
+├── MANIFEST.md               ★ 每個檔案是什麼、為什麼、以及「刻意不做什麼」
+├── git/
+│   └── .gitconfig            → ~/.gitconfig  （純行為，不含身分）
+├── shell/
+│   ├── git-aliases.sh        ★ 可攜的 git alias，複製到任何機器都能用
+│   ├── git-audit.sh          ★ 可攜的稽核工具，找出只存在本機的工作
+│   ├── work-profile.sh       ★ 公司機器入口：一行 source，不動現有設定
+│   ├── README.md             git alias 使用手冊（按情境查，附操作範例）
+│   └── TOOLS.md              終端機工具手冊（fzf / zoxide / rg / fd / bat）
+└── zsh/
+    ├── .zshrc                → ~/.zshrc      （只放載入邏輯）
+    ├── .p10k.zsh             → ~/.p10k.zsh   （powerlevel10k 外觀）
+    ├── custom/               ★ 實際設定在這裡，依編號順序自動載入
+    │   ├── 00-exports.zsh    PATH、EDITOR
+    │   ├── 10-history.zsh    歷史紀錄
+    │   ├── 20-aliases.zsh    alias
+    │   ├── 30-functions.zsh  函式
+    │   ├── 40-git.zsh        載入 shell/git-aliases.sh 與 git-audit.sh
+    │   └── 50-tools.zsh      zoxide / fzf 的 shell 整合
+    └── reference/
+        └── omz-template.zsh  oh-my-zsh 原始樣板存檔，純備查
+```
+
+---
+
+## 日常使用
+
+| 想做什麼 | 怎麼做 |
+|---|---|
+| 加一個 alias | 編輯 `zsh/custom/20-aliases.zsh`，然後 `reload` |
+| 加一個函式 | 編輯 `zsh/custom/30-functions.zsh` |
+| 加一整類新設定 | 新增 `zsh/custom/50-xxx.zsh`（編號要補零） |
+| 改 git 行為 | 編輯 `git/.gitconfig` |
+| 改 git 身分 | 編輯 `~/.gitconfig.local`（**不在這個 repo**） |
+| 暫時停用某段設定 | 把檔案改名加 `.off`，例如 `20-aliases.zsh.off` |
+| 重新載入 | `reload`（= `exec zsh`） |
+
+**不需要重跑 `install.sh`** —— 因為是符號連結，你改 repo 裡的檔案就是改生效中的設定。
+
+---
+
+## 設計原則
+
+這些原則的完整理由寫在 [`MANIFEST.md`](MANIFEST.md)。
+
+1. **符號連結，不是複製。**
+   複製法需要你「記得」同步，而沒有人會記得。上一版 dotfiles 用 `cp` 備份，
+   結果 repo 停在 2023 年，機器一路往前，兩邊安靜分岔了兩年。
+
+2. **這個 repo 放「行為」，不放「身分」。**
+   alias、diff 演算法換機器不會變 → 版控。
+   email、SSH 金鑰會隨環境改變 → `~/.gitconfig.local`，不版控。
+
+3. **別人的程式碼不進來。**
+   oh-my-zsh、powerlevel10k、plugin 都由 `bootstrap.sh` 取得，
+   界線是：別人的程式碼在 `~/.oh-my-zsh/`，我的設定在 `~/dotfiles/`。
+
+4. **短 alias 只給唯讀操作。**
+   有副作用的名稱寫清楚（`gpush` 而非 `gp`），破壞性的不做 alias。
+
+5. **大聲失敗優於安靜做錯。**
+   只「新增」名稱、不「覆蓋」既有名稱 —— 別台機器上得到 `command not found`
+   遠好過靜默執行別的動作。
+
+6. **不為還沒發生的問題蓋機制。**
+   刻意沒做：`~/.zshrc.local` 分層、逐 repo 的 git 身分切換、GNU stow。
+   真的需要那天再加，MANIFEST 記了做法。
+
+---
+
+## 復原
+
+`install.sh` 會把被取代的原檔備份到 `~/.dotfiles-backup/<時間戳>/`。
+
+要退回舊設定：
+
+```bash
+rm ~/.zshrc                                          # 移除符號連結
+cp ~/.dotfiles-backup/20260815-174500/.zshrc ~/      # 放回原檔
+exec zsh
+```
 
 ---
 
@@ -269,248 +515,3 @@ $ shellcheck install.sh
 | 想暫時停用某段設定 | — | 檔名加 `.off`，例如 `20-aliases.zsh.off`，然後 `reload` |
 
 ---
-
----
-
-# 兩種安裝情境
-
-| | 情境一：完整安裝 | 情境二：最小安裝 |
-|---|---|---|
-| **適用** | 你自己的機器、全新環境 | **公司機器**、不想動現有設定 |
-| **會做什麼** | 取代 `.zshrc` / `.gitconfig`（符號連結）、裝套件 | **只在現有 `.zshrc` 加一行** |
-| **動到現有設定嗎** | 會（原檔備份） | **完全不動** |
-| **需要 sudo** | 要 | 不用 |
-| **怎麼移除** | 從備份還原 | **刪掉那一行** |
-| **拿到什麼** | 全部 | git alias + `git-audit` |
-
----
-
-## 情境二：公司機器（最小安裝）
-
-**適用時機**：那台機器已經有你自己的 `.zshrc`，可能很亂但能跑，
-而你現在沒時間整理，也不想在忙的時候搞壞能用的環境。
-
-### 安裝
-
-```bash
-git clone <這個 repo> ~/dotfiles        # 用你自己的帳號，不要用 root
-```
-
-在現有 `~/.zshrc` 的**最後一行**加：
-
-```zsh
-[ -f ~/dotfiles/shell/work-profile.sh ] && source ~/dotfiles/shell/work-profile.sh
-```
-
-```bash
-exec zsh
-```
-
-**一定要加在最後面** —— 才蓋得過前面 oh-my-zsh 的定義（後定義的贏）。
-前面的 `[ -f ... ] &&` 是保險：檔案不在時靜默跳過，不會噴錯。
-
-### 它做什麼、不做什麼
-
-| ✅ 會做 | ❌ 不會做 |
-|---|---|
-| 載入 46 個 git alias | 碰 `~/.zshrc`（不建符號連結） |
-| 移除 13 個危險 alias | 碰 `~/.gitconfig`（**公司身分在裡面**） |
-| 載入 `git-audit` 函式 | 碰 `~/.p10k.zsh` |
-| | 裝任何套件 |
-
-### 移除
-
-刪掉那一行，`exec zsh`。環境立刻回到原狀。
-**一行加、一行刪，完全可逆** —— 這是它跟 `install.sh` 的根本差別。
-
-### ⚠️ `gp` 和 `gl` 會消失
-
-`git-aliases.sh` 移除的 13 個裡面，有兩個不是破壞性的：
-
-| 移除 | 原本是 | 改用 |
-|---|---|---|
-| `gp` | `git push` | `gpush` |
-| `gl` | `git pull` | `gpull` |
-
-移除 `gl` 是因為它緊鄰 `glo` / `glog` / `glg`（都是 log），少打一個字母
-就從「看歷史」變成「拉取」。
-
-**如果換習慣正是你的目的，這是刻意的機制。**
-不想改的話，在 `work-profile.sh` 的 source 之後補回來：
-
-```zsh
-alias gp='git push'
-alias gl='git pull'
-```
-
-### 也想要 fzf？
-
-`work-profile.sh` **不裝任何東西**，所以 fzf 不在裡面。但如果那台機器
-已經有 fzf（或你裝得起來），可以另外加。
-
-先檢查：
-
-```bash
-command -v fzf              # 有沒有裝
-alias | grep -c fzf         # oh-my-zsh 的 fzf plugin 有沒有啟用
-```
-
-| 情況 | 做法 |
-|---|---|
-| 有 fzf、`plugins` 已含 `fzf` | **什麼都不用做**，`Ctrl-R` / `Ctrl-T` 已經能用 |
-| 有 fzf、但 plugin 沒啟用 | 在現有 `.zshrc` 的 `plugins=(...)` 加上 `fzf` |
-| 沒有 fzf | `sudo apt install fzf`（需要權限） |
-
-裝好之後想要我們的優化設定（用 `fd` 掃描、`bat` 預覽），
-把 `zsh/custom/50-tools.zsh` 也 source 進去：
-
-```zsh
-[ -f ~/dotfiles/zsh/custom/50-tools.zsh ] && source ~/dotfiles/zsh/custom/50-tools.zsh
-```
-
-那個檔案裡每一項都用 `command -v` 守住 —— **沒裝 fd / bat / zoxide 的機器會靜默跳過**，
-不會噴錯，所以加了也安全。
-
-fzf 完整用法見 [`shell/TOOLS.md`](shell/TOOLS.md)。
-
-### 檔案怎麼同步到公司機器
-
-| 方法 | 之後的更新 |
-|---|---|
-| **GitHub private repo** | `git pull` 就有 ← 建議 |
-| 手動複製 | 每次都要重來一次，**必然會不同步** |
-
-手動複製會重演「repo 停在某一版、兩邊安靜分岔」的老路。
-這個 repo 的存在意義就是讓每台機器行為一致 —— 沒有同步機制的話那個意義就消失了。
-
----
-
-## `git-audit` —— 機器消失前的檢查
-
-**重灌、換機器、砍掉 WSL 發行版之前，先跑這個。**
-
-```bash
-$ git-audit                # 掃描家目錄
-$ git-audit ~/projects     # 掃描指定目錄
-```
-
-```
-~/ubuntu-project/cat-history
-  ✗ 分支 master：領先 origin/master 9 個 commit（未推送）
-
-~/ubuntu-project/investment-advisor
-  ✗ 分支 feature/phase1-db：無 upstream，本地 5 個 commit
-  ✗ 2 個未提交的變更
-
-─────────────────────────────────────────
-⚠  4 個 repo 有風險
-   15 個 commit 只存在這台機器
-   5 個未提交的檔案
-```
-
-### 為什麼需要工具，不能靠手動看
-
-**手動檢查會漏，而且是系統性地漏 —— 你只會看當前分支。**
-
-`git status` 顯示乾淨、當前分支也跟遠端同步，看起來完全安全。
-但另一條 feature 分支上可能有五個 commit 從來沒推過，那條分支你根本沒切過去看。
-
-這個工具逐一檢查**每一條分支**，加上未提交的變更與 stash。
-
-> stash 特別危險：它**不在 reflog 裡**。commit 過的東西還能靠 reflog 救，
-> stash 一旦隨機器消失就真的找不回來。
-
-回傳值可以串進腳本：
-
-```bash
-git-audit && echo "確認安全，可以進行破壞性操作"
-```
-
----
-
-## 結構
-
-```
-~/dotfiles/
-├── bootstrap.sh              新機器：裝套件、clone omz 與 plugin、產生身分範本
-├── install.sh                建立符號連結（-n 可乾跑）
-├── MANIFEST.md               ★ 每個檔案是什麼、為什麼、以及「刻意不做什麼」
-├── git/
-│   └── .gitconfig            → ~/.gitconfig  （純行為，不含身分）
-├── shell/
-│   ├── git-aliases.sh        ★ 可攜的 git alias，複製到任何機器都能用
-│   ├── git-audit.sh          ★ 可攜的稽核工具，找出只存在本機的工作
-│   ├── work-profile.sh       ★ 公司機器入口：一行 source，不動現有設定
-│   ├── README.md             git alias 使用手冊（按情境查，附操作範例）
-│   └── TOOLS.md              終端機工具手冊（fzf / zoxide / rg / fd / bat）
-└── zsh/
-    ├── .zshrc                → ~/.zshrc      （只放載入邏輯）
-    ├── .p10k.zsh             → ~/.p10k.zsh   （powerlevel10k 外觀）
-    ├── custom/               ★ 實際設定在這裡，依編號順序自動載入
-    │   ├── 00-exports.zsh    PATH、EDITOR
-    │   ├── 10-history.zsh    歷史紀錄
-    │   ├── 20-aliases.zsh    alias
-    │   ├── 30-functions.zsh  函式
-    │   └── 40-git.zsh        載入 shell/git-aliases.sh
-    └── reference/
-        └── omz-template.zsh  oh-my-zsh 原始樣板存檔，純備查
-```
-
----
-
-## 日常使用
-
-| 想做什麼 | 怎麼做 |
-|---|---|
-| 加一個 alias | 編輯 `zsh/custom/20-aliases.zsh`，然後 `reload` |
-| 加一個函式 | 編輯 `zsh/custom/30-functions.zsh` |
-| 加一整類新設定 | 新增 `zsh/custom/50-xxx.zsh`（編號要補零） |
-| 改 git 行為 | 編輯 `git/.gitconfig` |
-| 改 git 身分 | 編輯 `~/.gitconfig.local`（**不在這個 repo**） |
-| 暫時停用某段設定 | 把檔案改名加 `.off`，例如 `20-aliases.zsh.off` |
-| 重新載入 | `reload`（= `exec zsh`） |
-
-**不需要重跑 `install.sh`** —— 因為是符號連結，你改 repo 裡的檔案就是改生效中的設定。
-
----
-
-## 設計原則
-
-這些原則的完整理由寫在 [`MANIFEST.md`](MANIFEST.md)。
-
-1. **符號連結，不是複製。**
-   複製法需要你「記得」同步，而沒有人會記得。上一版 dotfiles 用 `cp` 備份，
-   結果 repo 停在 2023 年，機器一路往前，兩邊安靜分岔了兩年。
-
-2. **這個 repo 放「行為」，不放「身分」。**
-   alias、diff 演算法換機器不會變 → 版控。
-   email、SSH 金鑰會隨環境改變 → `~/.gitconfig.local`，不版控。
-
-3. **別人的程式碼不進來。**
-   oh-my-zsh、powerlevel10k、plugin 都由 `bootstrap.sh` 取得，
-   界線是：別人的程式碼在 `~/.oh-my-zsh/`，我的設定在 `~/dotfiles/`。
-
-4. **短 alias 只給唯讀操作。**
-   有副作用的名稱寫清楚（`gpush` 而非 `gp`），破壞性的不做 alias。
-
-5. **大聲失敗優於安靜做錯。**
-   只「新增」名稱、不「覆蓋」既有名稱 —— 別台機器上得到 `command not found`
-   遠好過靜默執行別的動作。
-
-6. **不為還沒發生的問題蓋機制。**
-   刻意沒做：`~/.zshrc.local` 分層、逐 repo 的 git 身分切換、GNU stow。
-   真的需要那天再加，MANIFEST 記了做法。
-
----
-
-## 復原
-
-`install.sh` 會把被取代的原檔備份到 `~/.dotfiles-backup/<時間戳>/`。
-
-要退回舊設定：
-
-```bash
-rm ~/.zshrc                                          # 移除符號連結
-cp ~/.dotfiles-backup/20260815-174500/.zshrc ~/      # 放回原檔
-exec zsh
-```
