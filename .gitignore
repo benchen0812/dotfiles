@@ -1,0 +1,14 @@
+# 編輯器與作業系統產生的垃圾
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 停用中的設定檔（把 20-aliases.zsh 改名成 20-aliases.zsh.off 就會停用它，
+# 那是暫時性的實驗狀態，不該進版控）
+*.off
+
+# 保險：身分設定放在 ~/.gitconfig.local，本來就不在這個目錄裡。
+# 這幾行是防止哪天不小心複製進來。
+.gitconfig.local
+*.local
