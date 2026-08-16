@@ -15,7 +15,7 @@
 | **會做什麼** | 取代 `.zshrc` / `.gitconfig`（符號連結）、裝套件 | **只在現有 `.zshrc` 加一行** |
 | **動到現有設定嗎** | 會（原檔備份） | **完全不動** |
 | **需要 sudo** | 要 | 不用 |
-| **怎麼移除** | 從備份還原 | **刪掉那一行** |
+| **怎麼移除** | 從備份還原 | **`./work-install.sh -u`** |
 | **拿到什麼** | 全部 | git alias + `git-audit` |
 
 ---
@@ -156,11 +156,6 @@ cd ~/dotfiles && ./work-install.sh -u
 | 載入 `git-audit` 函式 | 碰 `~/.p10k.zsh` |
 | | 裝任何套件 |
 
-### 移除
-
-刪掉那一行，`exec zsh`。環境立刻回到原狀。
-**一行加、一行刪，完全可逆** —— 這是它跟 `install.sh` 的根本差別。
-
 ### ⚠️ `gp` 和 `gl` 會消失
 
 `git-aliases.sh` 移除的 13 個裡面，有兩個不是破壞性的：
@@ -211,25 +206,13 @@ alias | grep -c fzf         # oh-my-zsh 的 fzf plugin 有沒有啟用
 
 fzf 完整用法見 [`shell/TOOLS.md`](shell/TOOLS.md)。
 
-### 公司機器怎麼取得這個 repo
+### 為什麼這個 repo 是公開的
 
-**這個 repo 是公開的**，所以 HTTPS clone 不需要任何認證：
+公開的好處很直接：**HTTPS clone 不需要任何認證**，
+不用登入、不用金鑰、不用 token，公司帳號完全不會出現在任何地方。
 
-```bash
-git clone https://github.com/benchen0812/dotfiles.git ~/dotfiles
-```
-
-之後更新：
-
-```bash
-cd ~/dotfiles && git pull
-```
-
-**完全不牽涉任何 GitHub 帳號** —— 不用登入、不用金鑰、不用 token，
-公司帳號也不會出現在任何地方。這正是選擇公開的主要理由。
-
-推送需要 collaborator 權限，所以公司機器**推不回來**。
-所有修改都在你自己的機器上做，公司那邊只消費。
+推送仍然需要 collaborator 權限，所以公司機器**推不回來** —— 這是刻意的。
+所有修改都在你自己的機器上做，公司那邊只消費，之後 `git pull` 取得更新。
 
 #### 為什麼公開是安全的
 
