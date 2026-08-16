@@ -6,8 +6,9 @@
 # 不建符號連結、不碰 .gitconfig、不裝任何套件。
 #
 # 用法：
-#   ./work-install.sh        安裝
+#   ./work-install.sh -c     ★ 先跑這個：檢查會跟現有 alias 撞到什麼
 #   ./work-install.sh -n     乾跑，只顯示會做什麼
+#   ./work-install.sh        安裝
 #   ./work-install.sh -u     移除
 #
 # 完整安裝（你自己的機器）請用 ./bootstrap.sh + ./install.sh。
@@ -26,6 +27,7 @@ MODE="install"
 case "${1:-}" in
   -n) MODE="dryrun"    ;;
   -u) MODE="uninstall" ;;
+  -c|--check) MODE="check" ;;
   -h|--help) sed -n '2,20p' "$0" | sed 's/^# \?//'; exit 0 ;;
   "") ;;
   *)  printf '未知參數：%s（用 -h 看說明）\n' "$1" >&2; exit 1 ;;
@@ -73,6 +75,61 @@ fi
 # grep -F 是「純文字比對」，不把內容當正則表達式處理。
 # 標記裡有 > 和 < ，用一般 grep 沒問題，但 -F 更保險也更快。
 already_installed() { [ -f "$RC" ] && grep -qF "$BEGIN_MARK" "$RC"; }
+
+# ── 檢查碰撞 ─────────────────────────────────────────────────────────
+#
+# 裝之前先看：你現有的哪些 alias 會被蓋掉或移除。
+#
+# 最危險的情況是「名字相同但意義不同」—— 例如你習慣 gc = git checkout，
+# 而我們定義 gc = git commit。裝完之後 gc 會靜默做別的事，不會報錯。
+if [ "$MODE" = "check" ]; then
+  # 從我們的檔案抽出「會定義」與「會移除」的 alias 名稱
+  defines=$(grep -oE "^alias [a-zA-Z!]+" "$DOTFILES/shell/git-aliases.sh" | awk '{print $2}' | sort -u)
+  removes=$(grep -oE "^unalias '?[a-zA-Z!]+'?" "$DOTFILES/shell/git-aliases.sh" \
+            | awk '{print $2}' | tr -d "'" | sort -u)
+
+  act "碰撞檢查"
+  echo
+
+  conflicts=0
+
+  printf '\033[1m會被「覆蓋成不同意義」的（最需要注意）\033[0m\n'
+  found=0
+  while IFS= read -r name; do
+    if [ -z "$name" ]; then continue; fi
+    old=$("${SHELL:-/bin/zsh}" -ic "alias $name" 2>/dev/null | sed -E "s/^(alias )?$name=//; s/^'//; s/'$//" || true)
+    if [ -z "$old" ];  then continue; fi
+    new=$(grep -E "^alias $name=" "$DOTFILES/shell/git-aliases.sh" | head -1 | sed -E "s/^alias $name=//; s/^'//; s/'.*$//")
+    if [ -n "$new" ] && [ "$old" != "$new" ]; then
+      printf '  🔴 %-8s 現在: %-28s → 之後: %s\n' "$name" "$old" "$new"
+      found=1; conflicts=$((conflicts + 1))
+    fi
+  done <<< "$defines"
+  if [ "$found" = "0" ]; then info "（無）"; fi
+
+  echo
+  printf '\033[1m會被移除的（打了會 command not found）\033[0m\n'
+  found=0
+  while IFS= read -r name; do
+    if [ -z "$name" ]; then continue; fi
+    old=$("${SHELL:-/bin/zsh}" -ic "alias $name" 2>/dev/null | sed -E "s/^(alias )?$name=//; s/^'//; s/'$//" || true)
+    if [ -n "$old" ]; then
+      printf '  🟡 %-8s 現在: %s\n' "$name" "$old"
+      found=1; conflicts=$((conflicts + 1))
+    fi
+  done <<< "$removes"
+  if [ "$found" = "0" ]; then info "（無）"; fi
+
+  echo
+  if [ "$conflicts" -eq 0 ]; then
+    act "沒有碰撞，可以安心安裝。"
+  else
+    act "共 $conflicts 個碰撞。"
+    info "🔴 的要特別注意 —— 那些名字之後會做不同的事，而且不會報錯。"
+    info "不想改變的話，在 .zshrc 的 source 那行「之後」再定義一次即可。"
+  fi
+  exit 0
+fi
 
 # ── 移除 ─────────────────────────────────────────────────────────────
 if [ "$MODE" = "uninstall" ]; then

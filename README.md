@@ -112,9 +112,40 @@ fatal: user.email is not set and useConfigOnly is set
 git clone https://github.com/benchen0812/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
+./work-install.sh -c     # ★ 先檢查：會跟你現有的 alias 撞到什麼
 ./work-install.sh -n     # 乾跑：只顯示會做什麼，不動任何檔案
 ./work-install.sh        # 實際安裝
 exec zsh                 # 生效
+```
+
+### ⚠️ 先跑 `-c` 檢查碰撞
+
+**你現有的 alias 不需要清掉** —— 我們的區塊加在最後，只有「名字撞到」的才受影響。
+但有一種情況會**靜默改變行為**，那是唯一需要注意的：
+
+```
+$ ./work-install.sh -c
+
+會被「覆蓋成不同意義」的（最需要注意）
+  🔴 gc       現在: git checkout    → 之後: git commit --verbose
+
+會被移除的（打了會 command not found）
+  🟡 gp       現在: git push
+```
+
+| 分級 | 意思 | 風險 |
+|---|---|---|
+| 🔴 | 名字保留，但**做不同的事** | **高** —— 不會報錯，你會以為它還是舊行為 |
+| 🟡 | 名字消失 | 低 —— `command not found`，大聲失敗 |
+
+不想改變某個 🔴 的話，在 `.zshrc` 的 source 那行**之後**再定義一次：
+
+```zsh
+# >>> dotfiles work-profile >>>
+[ -f ".../work-profile.sh" ] && source "..."
+# <<< dotfiles work-profile <<<
+
+alias gc='git checkout'    # 保留我原本的習慣
 ```
 
 移除：
