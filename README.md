@@ -170,6 +170,10 @@ Ubuntu / Debian 把兩個工具改了名字（避免與既有套件衝突）：
 
 ## 這些工具怎麼用
 
+> **完整手冊見 [`shell/TOOLS.md`](shell/TOOLS.md)** ——
+> 含所有鍵位、fzf 的模糊搜尋語法、各工具的常用參數表、以及我們的設定選擇與理由。
+> 下面只是速覽。
+
 ### fzf —— 這是「快速 navigate terminal」的答案
 
 裝好之後多出三組鍵位（不需要記指令）：
@@ -339,7 +343,9 @@ git-audit && echo "確認安全，可以進行破壞性操作"
 │   └── .gitconfig            → ~/.gitconfig  （純行為，不含身分）
 ├── shell/
 │   ├── git-aliases.sh        ★ 可攜的 git alias，複製到任何機器都能用
-│   └── README.md             git alias 使用手冊（按情境查，附操作範例）
+│   ├── git-audit.sh          ★ 可攜的稽核工具，找出只存在本機的工作
+│   ├── README.md             git alias 使用手冊（按情境查，附操作範例）
+│   └── TOOLS.md              終端機工具手冊（fzf / zoxide / rg / fd / bat）
 └── zsh/
     ├── .zshrc                → ~/.zshrc      （只放載入邏輯）
     ├── .p10k.zsh             → ~/.p10k.zsh   （powerlevel10k 外觀）
