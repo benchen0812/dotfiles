@@ -7,7 +7,7 @@
 
 ---
 
-## 在新機器上安裝
+## 情境一：完整安裝（你自己的機器）
 
 ```bash
 git clone <這個 repo> ~/dotfiles
@@ -270,22 +270,118 @@ $ shellcheck install.sh
 
 ---
 
-## 只要 git 工具（公司機器適用）
+---
 
-不想裝整套、或沒有權限時，**只複製 `shell/` 裡的檔案就能用**：
+# 兩種安裝情境
+
+| | 情境一：完整安裝 | 情境二：最小安裝 |
+|---|---|---|
+| **適用** | 你自己的機器、全新環境 | **公司機器**、不想動現有設定 |
+| **會做什麼** | 取代 `.zshrc` / `.gitconfig`（符號連結）、裝套件 | **只在現有 `.zshrc` 加一行** |
+| **動到現有設定嗎** | 會（原檔備份） | **完全不動** |
+| **需要 sudo** | 要 | 不用 |
+| **怎麼移除** | 從備份還原 | **刪掉那一行** |
+| **拿到什麼** | 全部 | git alias + `git-audit` |
+
+---
+
+## 情境二：公司機器（最小安裝）
+
+**適用時機**：那台機器已經有你自己的 `.zshrc`，可能很亂但能跑，
+而你現在沒時間整理，也不想在忙的時候搞壞能用的環境。
+
+### 安裝
 
 ```bash
-scp ~/dotfiles/shell/git-aliases.sh ~/dotfiles/shell/git-audit.sh 目標機器:~/
-cat >> ~/.zshrc <<'EOF'
-source ~/git-aliases.sh
-source ~/git-audit.sh
-EOF
+git clone <這個 repo> ~/dotfiles        # 用你自己的帳號，不要用 root
+```
+
+在現有 `~/.zshrc` 的**最後一行**加：
+
+```zsh
+[ -f ~/dotfiles/shell/work-profile.sh ] && source ~/dotfiles/shell/work-profile.sh
+```
+
+```bash
 exec zsh
 ```
 
-`git-aliases.sh` 必須加在**最後面**（要蓋過 oh-my-zsh 的定義）。
-兩個檔案都自足、零相依、bash 與 zsh 都能用。
-詳細說明見 [`shell/README.md`](shell/README.md)。
+**一定要加在最後面** —— 才蓋得過前面 oh-my-zsh 的定義（後定義的贏）。
+前面的 `[ -f ... ] &&` 是保險：檔案不在時靜默跳過，不會噴錯。
+
+### 它做什麼、不做什麼
+
+| ✅ 會做 | ❌ 不會做 |
+|---|---|
+| 載入 46 個 git alias | 碰 `~/.zshrc`（不建符號連結） |
+| 移除 13 個危險 alias | 碰 `~/.gitconfig`（**公司身分在裡面**） |
+| 載入 `git-audit` 函式 | 碰 `~/.p10k.zsh` |
+| | 裝任何套件 |
+
+### 移除
+
+刪掉那一行，`exec zsh`。環境立刻回到原狀。
+**一行加、一行刪，完全可逆** —— 這是它跟 `install.sh` 的根本差別。
+
+### ⚠️ `gp` 和 `gl` 會消失
+
+`git-aliases.sh` 移除的 13 個裡面，有兩個不是破壞性的：
+
+| 移除 | 原本是 | 改用 |
+|---|---|---|
+| `gp` | `git push` | `gpush` |
+| `gl` | `git pull` | `gpull` |
+
+移除 `gl` 是因為它緊鄰 `glo` / `glog` / `glg`（都是 log），少打一個字母
+就從「看歷史」變成「拉取」。
+
+**如果換習慣正是你的目的，這是刻意的機制。**
+不想改的話，在 `work-profile.sh` 的 source 之後補回來：
+
+```zsh
+alias gp='git push'
+alias gl='git pull'
+```
+
+### 也想要 fzf？
+
+`work-profile.sh` **不裝任何東西**，所以 fzf 不在裡面。但如果那台機器
+已經有 fzf（或你裝得起來），可以另外加。
+
+先檢查：
+
+```bash
+command -v fzf              # 有沒有裝
+alias | grep -c fzf         # oh-my-zsh 的 fzf plugin 有沒有啟用
+```
+
+| 情況 | 做法 |
+|---|---|
+| 有 fzf、`plugins` 已含 `fzf` | **什麼都不用做**，`Ctrl-R` / `Ctrl-T` 已經能用 |
+| 有 fzf、但 plugin 沒啟用 | 在現有 `.zshrc` 的 `plugins=(...)` 加上 `fzf` |
+| 沒有 fzf | `sudo apt install fzf`（需要權限） |
+
+裝好之後想要我們的優化設定（用 `fd` 掃描、`bat` 預覽），
+把 `zsh/custom/50-tools.zsh` 也 source 進去：
+
+```zsh
+[ -f ~/dotfiles/zsh/custom/50-tools.zsh ] && source ~/dotfiles/zsh/custom/50-tools.zsh
+```
+
+那個檔案裡每一項都用 `command -v` 守住 —— **沒裝 fd / bat / zoxide 的機器會靜默跳過**，
+不會噴錯，所以加了也安全。
+
+fzf 完整用法見 [`shell/TOOLS.md`](shell/TOOLS.md)。
+
+### 檔案怎麼同步到公司機器
+
+| 方法 | 之後的更新 |
+|---|---|
+| **GitHub private repo** | `git pull` 就有 ← 建議 |
+| 手動複製 | 每次都要重來一次，**必然會不同步** |
+
+手動複製會重演「repo 停在某一版、兩邊安靜分岔」的老路。
+這個 repo 的存在意義就是讓每台機器行為一致 —— 沒有同步機制的話那個意義就消失了。
 
 ---
 
@@ -344,6 +440,7 @@ git-audit && echo "確認安全，可以進行破壞性操作"
 ├── shell/
 │   ├── git-aliases.sh        ★ 可攜的 git alias，複製到任何機器都能用
 │   ├── git-audit.sh          ★ 可攜的稽核工具，找出只存在本機的工作
+│   ├── work-profile.sh       ★ 公司機器入口：一行 source，不動現有設定
 │   ├── README.md             git alias 使用手冊（按情境查，附操作範例）
 │   └── TOOLS.md              終端機工具手冊（fzf / zoxide / rg / fd / bat）
 └── zsh/
