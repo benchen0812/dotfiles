@@ -62,8 +62,8 @@ exec zsh            # 生效
 
 ```
 $ ./install.sh
-  已備份 .zshrc → /home/bc/.dotfiles-backup/20260815-195529/
-  已連結 ~/.zshrc → /home/bc/dotfiles/zsh/.zshrc
+  已備份 .zshrc → ~/.dotfiles-backup/20260815-195529/
+  已連結 ~/.zshrc → ~/dotfiles/zsh/.zshrc
   已是最新 .p10k.zsh          ← 沒被碰
   已是最新 .gitconfig         ← 沒被碰
 ```
@@ -189,70 +189,65 @@ alias | grep -c fzf         # oh-my-zsh 的 fzf plugin 有沒有啟用
 
 fzf 完整用法見 [`shell/TOOLS.md`](shell/TOOLS.md)。
 
-### 公司機器怎麼取得這個 repo（唯讀）
+### 公司機器怎麼取得這個 repo
 
-repo 是 private，而**公司機器只需要能 clone，不需要寫入**。
-
-用 **Deploy Key** —— 綁在單一 repo 上的 SSH 金鑰，預設唯讀，
-而且**完全不牽涉任何 GitHub 帳號**。
-
-| 方式 | 存取範圍 | 牽涉公司帳號 | 可寫入 |
-|---|---|---|---|
-| **Deploy Key** ← 用這個 | **只有這一個 repo** | **完全不** | **預設不行** |
-| 公司帳號加為 collaborator | 這一個 repo | 會（SSO 環境下管理員可能看得到） | 可以 |
-| 在公司機器用個人 SSH 金鑰 | **你所有的 repo** ← 太寬 | 不會 | 可以 |
-
-#### 步驟
-
-**1. 在公司機器產生一把專用金鑰**
+**這個 repo 是公開的**，所以 HTTPS clone 不需要任何認證：
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/dotfiles_deploy -C "dotfiles deploy key" -N ""
-cat ~/.ssh/dotfiles_deploy.pub
+git clone https://github.com/benchen0812/dotfiles.git ~/dotfiles
 ```
 
-`-N ""` 是不設密碼（自動 clone 時不會卡住）。
-私鑰只存在那台機器上，**不要傳到任何地方**。
-
-**2. 把公鑰加到 repo**
-
-到 `https://github.com/<你>/dotfiles/settings/keys` → **Add deploy key**
-
-- Title：填機器名稱（例如 `work-laptop`）
-- Key：貼上剛才 `cat` 出來的內容
-- **⚠️ 不要勾 "Allow write access"** —— 保持唯讀
-
-**3. 設定 SSH 別名**
-
-在公司機器的 `~/.ssh/config` 加：
-
-```
-Host github-dotfiles
-    HostName github.com
-    User git
-    IdentityFile ~/.ssh/dotfiles_deploy
-    IdentitiesOnly yes
-```
-
-`IdentitiesOnly yes` 很重要：沒有這行，ssh 會把機器上**所有**金鑰都試一遍，
-可能誤用到公司的金鑰。
-
-**4. Clone**
-
-```bash
-git clone git@github-dotfiles:benchen0812/dotfiles.git ~/dotfiles
-```
-
-注意主機名是 `github-dotfiles`（上面設的別名），不是 `github.com`。
-
-**5. 之後更新**
+之後更新：
 
 ```bash
 cd ~/dotfiles && git pull
 ```
 
-因為是唯讀，公司機器**不能**也**不會**推東西回來 —— 這是刻意的。
+**完全不牽涉任何 GitHub 帳號** —— 不用登入、不用金鑰、不用 token，
+公司帳號也不會出現在任何地方。這正是選擇公開的主要理由。
+
+推送需要 collaborator 權限，所以公司機器**推不回來**。
 所有修改都在你自己的機器上做，公司那邊只消費。
+
+#### 為什麼公開是安全的
+
+因為這個 repo 的架構**從一開始就把身分排除在外**（見「設計原則」第 2 條）：
+
+| | 在哪 |
+|---|---|
+| git email、SSH 金鑰 | `~/.gitconfig.local`、`~/.ssh/` —— **不在 repo 裡** |
+| 機器專屬路徑 | 一個都沒有（刻意的） |
+| token、密碼 | 沒有 |
+
+當初為了「乾淨」做的設計，讓「可以公開」變成免費的附帶結果。
+如果那時把 email 寫進 `git/.gitconfig`，現在就得先清 git 歷史才能公開。
+
+> 公開 dotfiles 是社群常態 —— 大多數人的 dotfiles repo 都是公開的，
+> 因為裡面本來就不該有秘密。
+
+#### 如果之後改回 private
+
+那時公司機器就需要認證。**用 Deploy Key**：綁在單一 repo、預設唯讀、
+不牽涉任何 GitHub 帳號。
+
+```bash
+# 1. 在公司機器產生專用金鑰
+ssh-keygen -t ed25519 -f ~/.ssh/dotfiles_deploy -N ""
+cat ~/.ssh/dotfiles_deploy.pub
+
+# 2. 貼到 https://github.com/<你>/dotfiles/settings/keys
+#    → Add deploy key，不要勾 "Allow write access"
+
+# 3. ~/.ssh/config 加別名
+#      Host github-dotfiles
+#          HostName github.com
+#          User git
+#          IdentityFile ~/.ssh/dotfiles_deploy
+#          IdentitiesOnly yes      ← 沒這行 ssh 會試遍所有金鑰，可能誤用公司的
+
+# 4. clone（主機名用別名，不是 github.com）
+git clone git@github-dotfiles:benchen0812/dotfiles.git ~/dotfiles
+```
 
 ---
 
