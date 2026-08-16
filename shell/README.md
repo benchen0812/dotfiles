@@ -84,6 +84,62 @@ $ gac "加入搜尋 API"            # add --all + commit 一次做完
 > ⚠️ `gac` 會把**所有東西**收進去，包括 `.env`、除錯用的 log、暫存檔。
 > 這就是為什麼前面那行 `gss` 不能省 —— 一秒鐘，換掉把密碼 commit 進歷史的意外。
 
+---
+
+## 讀懂 `gss` 的輸出
+
+`gss` = `git status --short`。每個檔案一行，**兩欄符號 + 檔名**，
+沒有 `gst` 那些「use git add to...」的提示文字。
+
+```
+MM both.txt
+D  deleted.txt
+M  edited.txt
+R  oldname.txt -> newname.txt
+A  staged-new.txt
+?? untracked.txt
+```
+
+### 關鍵是那兩欄
+
+```
+第 1 欄 = 暫存區（已 add 的）
+第 2 欄 = 工作目錄（還沒 add 的）
+```
+
+| 顯示 | 意思 |
+|---|---|
+| `M ` | 修改**已 add**，下次 commit 會進去 |
+| ` M` | 修改了但**還沒 add**（注意第一欄是空白） |
+| `MM` | **add 之後又改了** —— 只有 add 當下那一版會進 commit |
+| `A ` | 新檔案已 add |
+| `D ` | 刪除已 add |
+| `R ` | 改名已 add（顯示 `舊名 -> 新名`） |
+| `??` | git 完全不認識這個檔案（未追蹤） |
+| `!!` | 被 `.gitignore` 忽略（要加 `--ignored` 才會顯示） |
+| `UU` | 合併衝突，雙方都改了同一處 |
+
+**`MM` 是最容易踩的坑。** 你以為改的東西都會進去，
+實際上只有 `git add` 當下那一版會 —— 之後又改的部分留在工作目錄。
+
+### 相關的三個變體
+
+| alias | 指令 | 差別 |
+|---|---|---|
+| `gst` | `git status` | 完整版，含提示文字 |
+| `gss` | `git status --short` | 精簡，一行一個檔案 |
+| `gsb` | `git status --short --branch` | 精簡 + 最上面多一行分支與領先/落後 |
+
+### 為什麼這是最該養成的習慣
+
+**它是唯一能在你按下 commit 之前，一眼看出「哪些東西會被收進去」的指令。**
+
+`gac`（= `add --all` + commit）把兩個動作綁在一起，中間沒有讓你確認的瞬間。
+先打一次 `gss`，那一秒鐘就是你發現「欸這是別人的 repo」或
+「`.env` 怎麼在裡面」的機會。
+
+---
+
 ### `gac` 和 `gcam` 差在哪（重要）
 
 ```bash
