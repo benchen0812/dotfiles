@@ -386,11 +386,33 @@ unsetopt SHARE_HISTORY
 
   **設定**（只需一次）：
 
-  | 終端機 | 怎麼設 |
+  先確認你在哪個 app —— 三個地方的設定完全不同：
+
+  ```bash
+  echo $TERM_PROGRAM      # iTerm.app / Apple_Terminal / vscode
+  ```
+
+  | 終端機 | 路徑（`⌘ ,` 開設定） |
   |---|---|
-  | iTerm2 | Settings → Profiles → Keys → **Left Option key** = `Esc+` |
-  | Terminal.app | Settings → Profiles → Keyboard → 勾 **Use Option as Meta key** |
-  | VS Code 內建終端 | 預設就通，不用設 |
+  | iTerm2 | **Profiles** → **Keys** → **General** → `Left Option key` = `Esc+` |
+  | Terminal.app | **Profiles** → **Keyboard** → 勾 `Use Option as Meta key` |
+  | VS Code | 設定裡搜 `macOptionIsMeta` → 勾起來（預設是關的） |
+
+  > ⚠️ **iTerm2 有兩個叫「Keys」的地方**，這是最常找錯的一點。
+  > 左側最上層那個 `Keys` 是全域熱鍵，**不是這個**。
+  > 要走 **Profiles** 進去，再點右邊分頁列的 `Keys`。
+  > 而且設定只對「當前使用的 profile」生效 —— 有多個 profile 的話別設錯。
+
+  **怎麼驗證有沒有生效**（不用重開終端機）：
+
+  ```bash
+  cat -v          # 然後按 ⌥ + C，最後按 Ctrl-C 離開
+  ```
+
+  | 看到 | 意思 |
+  |---|---|
+  | `^[c` | ✅ 生效了。`^[` 就是 `Esc`，後面跟著 `c` —— 這正是 Meta 的送法 |
+  | `ç` 或 `M-CM-'` | ❌ 還沒生效，Option 還在當輸入法修飾鍵 |
 
   **⚠️ 只設左邊那顆。** 這樣右邊的 Option 還能打 `é` `ü` `—` `≈` 這些字元 ——
   兩邊都設就完全失去 macOS 的特殊字元輸入。iTerm2 分左右，
