@@ -26,9 +26,25 @@
 |---|---|---|
 | `Ctrl-R` | ★ 模糊搜尋**歷史指令**。不要再按上鍵翻 | fzf |
 | `Ctrl-T` | 模糊搜尋**檔案**，選中的路徑插入到游標位置 | fzf |
-| `Alt-C` | 模糊搜尋**目錄**並 `cd` 過去（macOS 要先設 Option 鍵） | fzf |
+| `Alt-C` | 模糊搜尋**目錄**並 `cd` 過去 | fzf |
 | `→` | 接受灰字歷史建議（整行） | zsh-autosuggestions |
 | `Ctrl-→` | 只接受建議的下一個字 | zsh-autosuggestions |
+
+### Meta（`Alt`）鍵位 —— zsh 內建，但 macOS 要先設定
+
+這些不是我們裝的，是 zsh 的 emacs 鍵位模式本來就有。但在 macOS 上
+**整組預設都是死的**，因為 Option 鍵沒有對應到 Meta：
+
+| 鍵 | 做什麼 |
+|---|---|
+| `Alt-.` | ★ 插入**上一個指令的最後一個參數**。`ls 長路徑` → `cd Alt-.` |
+| `Alt-B` / `Alt-F` | 游標按「單字」左右移動，不用一個一個字元按 |
+| `Alt-Backspace` | 刪掉前面一個**單字** |
+| `Alt-D` | 刪掉後面一個**單字** |
+| `Alt-T` | 交換游標前後兩個單字 |
+| `Alt-C` | fzf 的搜目錄並 cd（上表那個） |
+
+macOS 的設定方式與代價見 [macOS 額外注意](#macos-額外注意)。
 
 ## git —— 唯讀（零風險，打錯了沒後果）
 
@@ -347,9 +363,31 @@ unsetopt SHARE_HISTORY
 
 ### macOS 額外注意
 
-- **`Alt-C` 預設是死的。** Option 鍵要先對應到 Meta：
-  iTerm2 把 Left Option 設成 `Esc+`；Terminal.app 勾「Use Option as Meta key」。
-  `Ctrl-R` 和 `Ctrl-T` 不受影響。
+- **整組 `Alt` 鍵位預設是死的**，不只 `Alt-C`。
+
+  **為什麼**：終端機裡的 `Alt-x` 實際上送的是「`Esc` 然後 `x`」兩個位元組
+  （這是 Meta 鍵的歷史約定）。但 macOS 把 Option 當成**輸入法修飾鍵** ——
+  `Option-e` 送的是重音符號 `´`，`Option-c` 送的是 `ç`。
+  終端機收到的是一個字元，不是 `Esc` 前綴，所以 zsh 的 `\ec` 綁定永遠不會觸發。
+
+  **設定**（只需一次）：
+
+  | 終端機 | 怎麼設 |
+  |---|---|
+  | iTerm2 | Settings → Profiles → Keys → **Left Option key** = `Esc+` |
+  | Terminal.app | Settings → Profiles → Keyboard → 勾 **Use Option as Meta key** |
+  | VS Code 內建終端 | 預設就通，不用設 |
+
+  **⚠️ 只設左邊那顆。** 這樣右邊的 Option 還能打 `é` `ü` `—` `≈` 這些字元 ——
+  兩邊都設就完全失去 macOS 的特殊字元輸入。iTerm2 分左右，
+  Terminal.app 的那個勾選是兩邊一起，代價比較大。
+
+  **打開之後拿到什麼**（不只 `Alt-C`，是整組）：
+  `Alt-.` 插入上個指令的最後一個參數、`Alt-B`/`Alt-F` 按單字移動游標、
+  `Alt-Backspace` 刪一個單字、`Alt-D` 刪後面一個單字、`Alt-T` 交換兩個單字。
+  這些是 zsh 內建的，跟這個 repo 無關 —— 但沒設 Option 鍵就一個都用不到。
+
+  `Ctrl-R` 和 `Ctrl-T` 完全不受影響（Ctrl 系列跟 Option 無關）。
 - 沒有 brew 也不能 sudo 時，fzf 可以完全裝在家目錄：
   ```bash
   git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf

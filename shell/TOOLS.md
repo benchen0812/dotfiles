@@ -21,6 +21,12 @@ git 相關的另外看 [`README.md`](README.md)。
 | `→` | 接受灰字歷史建議（整行） | zsh-autosuggestions |
 | `Ctrl-→` | 只接受建議的**下一個字** | zsh-autosuggestions |
 | `Esc Esc` | — | （`sudo` plugin 刻意沒裝） |
+| `Alt-.` | 插入上一個指令的**最後一個參數** | zsh 內建 |
+| `Alt-B` / `Alt-F` | 游標按「單字」左右移動 | zsh 內建 |
+| `Alt-Backspace` | 刪掉前面一個**單字** | zsh 內建 |
+| `Alt-D` | 刪掉後面一個**單字** | zsh 內建 |
+
+> macOS 上所有 `Alt-` 開頭的都要先設 Option 鍵，見下方 `Alt-C` 那一節。
 
 ## 速查：新增的指令
 
@@ -69,10 +75,24 @@ $ vim src/connectors/web/web-plugin.ts
 
 跟 `z` 的差別：`Alt-C` 搜的是**當前目錄底下**的所有子目錄；`z` 搜的是**你去過的**目錄（可能在任何地方）。
 
-> ⚠️ **macOS 上這個鍵預設是死的。** Option 鍵要先對應到 Meta：
-> iTerm2 把 Left Option 設成 `Esc+`；Terminal.app 勾「Use Option as Meta key」。
-> 這是終端機的設定問題，不是 fzf 或我們的設定有問題 ——
-> `Ctrl-R` 和 `Ctrl-T` 不受影響。
+> ⚠️ **macOS 上這個鍵預設是死的**，而且不只這個 —— 整組 `Alt` 鍵位都是。
+>
+> **原因**：終端機裡的 `Alt-x` 送的其實是「`Esc` 然後 `x`」兩個位元組。
+> 但 macOS 把 Option 當輸入法修飾鍵 —— `Option-c` 送的是 `ç`，
+> 終端機收到一個字元而不是 `Esc` 前綴，所以 zsh 的 `\ec` 綁定不會觸發。
+>
+> **設定**（一次就好）：iTerm2 → Settings → Profiles → Keys →
+> **Left Option key** = `Esc+`；Terminal.app → Profiles → Keyboard →
+> 勾 **Use Option as Meta key**。
+>
+> **只設左邊那顆** —— 右邊留著打 `é` `—` `≈` 這些字元。
+>
+> 打開之後順便拿到整組 zsh 內建的 Meta 鍵位（跟這個 repo 無關，
+> 但沒設就用不到）：`Alt-.` 插入上個指令的最後一個參數、
+> `Alt-B`/`Alt-F` 按單字移動、`Alt-Backspace` 刪一個單字、`Alt-D` 刪後面一個單字。
+>
+> 這是終端機的設定問題，不是 fzf 或我們的設定有問題。
+> `Ctrl-R` 和 `Ctrl-T` 完全不受影響。
 
 ---
 
