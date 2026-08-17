@@ -22,20 +22,43 @@
 
 ## 鍵位 —— 不用記指令，最高投報率
 
-| 鍵 | 做什麼 | 來自 |
-|---|---|---|
-| `Ctrl-R` | ★ 模糊搜尋**歷史指令**。不要再按上鍵翻 | fzf |
-| `Ctrl-T` | 模糊搜尋**檔案**，選中的路徑插入到游標位置 | fzf |
-| `Alt-C` | 模糊搜尋**目錄**並 `cd` 過去 | fzf |
-| `→` | 接受灰字歷史建議（整行） | zsh-autosuggestions |
-| `Ctrl-→` | 只接受建議的下一個字 | zsh-autosuggestions |
+### 平台差異總覽（先看這個）
 
-### `Ctrl` 鍵位 —— zsh 內建，**不用任何設定**
+**差異只有一處：Meta 鍵。** `Ctrl` 系列三個平台完全相同。
+
+| | Mac | Linux / WSL |
+|---|---|---|
+| Meta 鍵鍵帽上印什麼 | `option` / `⌥` | `Alt` |
+| **開箱就能用嗎** | ❌ 要先設成 `Esc+` | ✅ 直接可用 |
+| 退格鍵叫什麼 | `delete`（Return 上面那顆） | `Backspace` |
+| `Ctrl` 系列 | 完全相同 | 完全相同 |
+| `Home` / `End` | 筆電沒有實體鍵 | 有實體鍵 |
+
+> **`Home` / `End` 不可靠，用 `Ctrl-A` / `Ctrl-E`。** 那兩顆送出的
+> escape 序列各家終端機不同（`^[OH` / `^[[H` / `^[[1~` 都有人用），
+> 我在這台上實測只有 `^[OH` 綁到 `beginning-of-line`，其餘兩種是
+> `undefined-key`。`Ctrl-A` / `Ctrl-E` 送的是單一控制字元，不會有這個問題。
+>
+> **Linux 的注意事項**：有些終端機（如 GNOME Terminal）預設把 `Alt` 拿去做
+> 選單快速鍵（`Alt-F` = File），會吃掉 `Alt-F`。
+> 在偏好設定裡關掉「Enable menu access keys」即可。
+
+### fzf 與補全
+
+| 做什麼 | Mac | Linux / WSL | 來自 |
+|---|---|---|---|
+| ★ 模糊搜尋**歷史指令**。不要再按上鍵翻 | `Ctrl` + `R` | `Ctrl` + `R` | fzf |
+| 模糊搜尋**檔案**，路徑插入到游標位置 | `Ctrl` + `T` | `Ctrl` + `T` | fzf |
+| 模糊搜尋**目錄**並 `cd` 過去 | `Option` + `C` | `Alt` + `C` | fzf |
+| 接受灰字歷史建議（整行） | `→` | `→` | zsh-autosuggestions |
+| 只接受建議的下一個字 | `Ctrl` + `→` | `Ctrl` + `→` | zsh-autosuggestions |
+
+### `Ctrl` 行編輯 —— 三個平台完全相同，**不用任何設定**
 
 跟 Meta 那組不同，這些在 Mac 上開箱就能用（`Ctrl` 跟 Option 無關）。
 所以如果懶得設 Option，**先把這幾個記起來，涵蓋八成的行編輯需求**。
 
-| 怎麼按 | 做什麼 | 記法 |
+| 怎麼按（Mac / Linux / WSL 一樣） | 做什麼 | 記法 |
 |---|---|---|
 | `Ctrl` + `A` | ★ 游標跳到**行首**（最左邊） | **A** = 開頭 |
 | `Ctrl` + `E` | ★ 游標跳到**行尾**（最右邊） | **E**nd |
@@ -78,17 +101,21 @@
 **按法**：按住 Option 不放，再按第二個鍵，然後兩顆一起放掉 ——
 跟按 `Ctrl-C` 是同一種按法，不是先按 Option 再按下一個。
 
-| Mac 上怎麼按 | 文件慣用寫法 | 做什麼 |
+| 做什麼 | Mac | Linux / WSL |
 |---|---|---|
-| `Option` + `.`（句點） | `Alt-.` | ★ 插入**上一個指令的最後一個參數** |
-| `Option` + `B` | `Alt-B` | 游標往左跳一個**單字**（**B**ackward） |
-| `Option` + `F` | `Alt-F` | 游標往右跳一個**單字**（**F**orward） |
-| `Option` + `delete` | `Alt-Backspace` | 刪掉游標**前面**一整個單字 |
-| `Option` + `D` | `Alt-D` | 刪掉游標**後面**一整個單字（**D**elete） |
-| `Option` + `T` | `Alt-T` | 交換游標前後兩個單字 |
-| `Option` + `C` | `Alt-C` | 跳出 fzf 目錄選單，選了直接 cd 過去 |
+| ★ 插入**上一個指令的最後一個參數** | `Option` + `.`（句點） | `Alt` + `.` |
+| 游標往左跳一個**單字**（**B**ackward） | `Option` + `B` | `Alt` + `B` |
+| 游標往右跳一個**單字**（**F**orward） | `Option` + `F` | `Alt` + `F` |
+| 刪掉游標**前面**一整個單字 | `Option` + `delete` | `Alt` + `Backspace` |
+| 刪掉游標**後面**一整個單字（**D**elete） | `Option` + `D` | `Alt` + `D` |
+| 交換游標前後兩個單字 | `Option` + `T` | `Alt` + `T` |
+| 跳出 fzf 目錄選單，選了直接 cd 過去 | `Option` + `C` | `Alt` + `C` |
 
-> Mac 上的 `delete` 就是 Return 上面那顆退格鍵（Windows 鍵盤叫 Backspace）。
+> **Linux 那一欄同時就是文件與官方手冊的慣用寫法**（`Alt-.`、`Alt-B`…）——
+> fzf 和 zsh 的文件都那樣寫，所以看別人的文章時對照 Linux 欄即可。
+>
+> Mac 上的 `delete` 就是 Return 上面那顆退格鍵（Linux / Windows 鍵盤叫 `Backspace`）。
+> Mac 筆電沒有獨立的向後刪除鍵，那是 `fn` + `delete`。
 
 這些是在**指令提示列上打字時**用的（zsh 的行編輯），不是在 vim 裡面。
 
