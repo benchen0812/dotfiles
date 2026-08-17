@@ -27,6 +27,20 @@ git 相關的另外看 [`README.md`](README.md)。
 | `Alt-D` | 刪掉後面一個**單字** | zsh 內建 |
 | `Alt-T` | 交換游標前後兩個單字 | zsh 內建 |
 
+## 速查：`Ctrl` 行編輯（不用任何設定，Mac 開箱就能用）
+
+| 鍵 | 做什麼 |
+|---|---|
+| `Ctrl-A` / `Ctrl-E` | 游標跳到**行首** / **行尾** |
+| `Ctrl-W` | 刪掉前面一整個單字（`Alt-Backspace` 的替代品，不用設 Option） |
+| `Ctrl-U` | 刪掉整行（⚠️ zsh 是整行；bash 是刪到行首，兩者不同） |
+| `Ctrl-K` | 從游標刪到行尾 |
+| `Ctrl-Y` | 把剛才刪掉的貼回來 |
+| `Ctrl-L` | 清畫面 |
+| `Ctrl-X` `Ctrl-E` | 把當前這行丟進 `$EDITOR` 編輯，存檔離開就執行 |
+
+---
+
 **Mac 上 `Alt` 就是 `Option`**，按法是「按住 Option 不放，再按第二個鍵」：
 
 | 文件寫 | Mac 上按 |

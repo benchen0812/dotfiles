@@ -30,6 +30,32 @@
 | `→` | 接受灰字歷史建議（整行） | zsh-autosuggestions |
 | `Ctrl-→` | 只接受建議的下一個字 | zsh-autosuggestions |
 
+### `Ctrl` 鍵位 —— zsh 內建，**不用任何設定**
+
+跟 Meta 那組不同，這些在 Mac 上開箱就能用（`Ctrl` 跟 Option 無關）。
+所以如果懶得設 Option，**先把這幾個記起來，涵蓋八成的行編輯需求**。
+
+| 怎麼按 | 做什麼 | 記法 |
+|---|---|---|
+| `Ctrl` + `A` | ★ 游標跳到**行首**（最左邊） | **A** = 開頭 |
+| `Ctrl` + `E` | ★ 游標跳到**行尾**（最右邊） | **E**nd |
+| `Ctrl` + `W` | ★ 刪掉游標前面一整個單字 | **W**ord |
+| `Ctrl` + `U` | 刪掉**整行**（zsh 是整行，不是只刪到行首） | |
+| `Ctrl` + `K` | 從游標刪到**行尾** | **K**ill |
+| `Ctrl` + `Y` | 把剛才 `Ctrl-U`/`K`/`W` 刪掉的貼回來 | **Y**ank |
+| `Ctrl` + `L` | 清空畫面（等於 `clear`，但不用按 Enter） | c**L**ear |
+| `Ctrl` + `X` 再 `Ctrl` + `E` | 把當前這行丟進 `$EDITOR`（vim）編輯，存檔離開就執行 | **E**dit |
+
+> **`Ctrl-W` 就是 `Option-delete` 的替代品**，而且不用設 Option。
+> 兩者都是刪前面一個單字。差別只在 `Ctrl-W` 以空白切分，
+> `Option-delete` 會把 `/` `-` 也當分界 —— 刪路徑片段時 `Option-delete` 比較細。
+>
+> ⚠️ **`Ctrl-U` 在 zsh 和 bash 不一樣**。zsh 是刪整行（`kill-whole-line`），
+> bash 是「刪到行首」（`unix-line-discard`）。在別的地方學到的行為可能對不上。
+
+`Ctrl-X Ctrl-E` 值得單獨提：打到一半發現指令很長很複雜，按它就跳進 vim，
+用完整的編輯能力改完，`:wq` 存檔離開後 zsh 直接執行那行。
+
 ### Meta（`Alt`）鍵位 —— zsh 內建，但 macOS 要先設定
 
 > **Mac 上的 `Alt` 就是 `Option`（`⌥`）** —— 同一顆鍵，兩個名字。
