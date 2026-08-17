@@ -5,6 +5,180 @@
 **這個 repo 是「跨機器的工具庫」，不是這台機器的設定備份。**
 所以它只放不隨環境改變的東西 —— 身分（email）、機器專屬路徑都不在這裡。
 
+[**Cheat Sheet**](#cheat-sheet) ·
+[安裝](#兩種安裝情境) ·
+[結構](#結構) ·
+[驗證](#安裝後驗證) ·
+[疑難排解](#疑難排解)
+
+---
+
+# Cheat Sheet
+
+> `★` = 最值得先記的。
+> 「什麼時候用、為什麼這樣命名」的完整說明在
+> [`shell/README.md`](shell/README.md)（按情境查，附操作範例）；
+> 終端機工具看 [`shell/TOOLS.md`](shell/TOOLS.md)。
+
+## 鍵位 —— 不用記指令，最高投報率
+
+| 鍵 | 做什麼 | 來自 |
+|---|---|---|
+| `Ctrl-R` | ★ 模糊搜尋**歷史指令**。不要再按上鍵翻 | fzf |
+| `Ctrl-T` | 模糊搜尋**檔案**，選中的路徑插入到游標位置 | fzf |
+| `Alt-C` | 模糊搜尋**目錄**並 `cd` 過去（macOS 要先設 Option 鍵） | fzf |
+| `→` | 接受灰字歷史建議（整行） | zsh-autosuggestions |
+| `Ctrl-→` | 只接受建議的下一個字 | zsh-autosuggestions |
+
+## git —— 唯讀（零風險，打錯了沒後果）
+
+### 狀態與差異
+
+| alias | 展開 | 說明 |
+|---|---|---|
+| `g` | `git` | |
+| `gst` | `git status` | 完整狀態，含提示文字 |
+| `gss` | `git status --short` | ★ 精簡：兩欄符號 + 檔名 |
+| `gsb` | `git status --short --branch` | 精簡 + 分支與領先/落後 |
+| `gd` | `git diff` | 改了但**還沒 add** 的 |
+| `gds` | `git diff --staged` | ★ 已 add、要提交的 |
+| `gdw` | `git diff --word-diff` | 逐「字」比對，改文件時好讀很多 |
+
+### 歷史與追溯
+
+| alias | 展開 | 說明 |
+|---|---|---|
+| `glo` | `git log --oneline --decorate` | |
+| `glog` | `git log --oneline --decorate --graph` | ★ 帶分支線 |
+| `glol` | `git log --graph --pretty=…` | 彩色、含作者與相對時間 |
+| `glg` | `git log --stat` | 每個 commit 附「哪些檔案改了幾行」 |
+| `gbl` | `git blame -w` | 每一行是誰改的（`-w` 忽略純空白改動） |
+| `grl` | `git reflog` | ★★ HEAD 移動的完整歷史 —— **出事時的第一站** |
+
+### 分支與遠端
+
+| alias | 展開 | 說明 |
+|---|---|---|
+| `gb` | `git branch` | 本地分支 |
+| `gba` | `git branch --all` | 含遠端分支 |
+| `gbv` | `git branch -vv` | ★ 每個分支「追蹤誰」「領先/落後幾個」 |
+| `gf` | `git fetch` | 只抓遠端更新，不動工作目錄。**永遠安全** |
+| `grv` | `git remote -v` | remote 指向哪些 URL |
+
+### stash
+
+| alias | 展開 | 說明 |
+|---|---|---|
+| `gstl` | `git stash list` | 有哪些 stash |
+| `gsts` | `git stash show -p` | 看最上面那個的內容 |
+
+## git —— 日常
+
+| alias | 展開 | 說明 |
+|---|---|---|
+| `ga` | `git add` | |
+| `gaa` | `git add --all` | 所有變更，含新檔案與刪除 |
+| `gapa` | `git add --patch` | ★ 逐「區塊」挑要提交的部分 |
+| `gc` | `git commit --verbose` | ★ 編輯器裡會一起顯示 diff |
+| `gcmsg` | `git commit -m` | 一行訊息，不開編輯器 |
+| `gcam` | `git commit -a -m` | `-a` 只含**已追蹤**檔案，新檔案不會進去 |
+| `gac` | `git add --all && git commit -m` | 含新檔案。跟 `gcam` 的差別見下 |
+| `gco` | `git checkout` | 切分支（也能還原檔案 —— 一詞多義是 git 的設計失誤） |
+| `gcb` | `git checkout -b` | 建立並切換到新分支 |
+| `gcm` | `git checkout <主分支>` | 自動判斷 main 還是 master |
+| `gbd` | `git branch --delete` | 安全刪除：未合併的會被擋 |
+
+> **`gcam` vs `gac`**：`gcam` 的 `-a` 只暫存**已追蹤**檔案 ——
+> 新增的檔案不會被提交，而且不會有任何提示。`gac` 用 `--all`，包含新檔案。
+> 這是最容易踩到的一個差異。
+
+## git —— 有副作用（名稱刻意寫長，讓手指慢下來）
+
+| alias | 展開 | 說明 |
+|---|---|---|
+| `gpush` | `git push` | |
+| `gpushu` | `git push -u origin HEAD` | ★ 新分支第一次推，順便建立追蹤 |
+| `gpull` | `git pull` | 預設是 fetch + merge |
+| `gpullr` | `git pull --rebase` | |
+| `gamend` | `git commit --amend --no-edit` | 改上一個 commit 的內容，不改訊息 |
+| `gsta` | `git stash push` | 收起修改，工作目錄回到乾淨 |
+| `gstp` | `git stash pop` | 取回並從清單移除 |
+
+## git —— Rebase / Merge
+
+| alias | 展開 | 說明 |
+|---|---|---|
+| `grb` | `git rebase` | |
+| `grbi` | `git rebase --interactive` | ★ 整理歷史（squash / reword / drop） |
+| `grbc` | `git rebase --continue` | 解完衝突後繼續 |
+| `grba` | `git rebase --abort` | ★★ **完全放棄，回到 rebase 前**。救命用 |
+| `grbom` | `git rebase origin/<主分支>` | 把分支更新到主分支最新狀態 |
+| `gm` | `git merge` | |
+| `gmc` | `git merge --continue` | |
+| `gma` | `git merge --abort` | ★★ 同樣是救命用 |
+
+## 被移除的 13 個（打了會 `command not found`）
+
+**大聲失敗永遠比安靜做錯好。** 判斷標準：git 靠 reflog 幾乎能救回所有
+**commit 過**的東西，救不回的只有**沒 commit 過的變更** ——
+所有攻擊那個部分的指令都算危險。
+
+| 移除 | 原本是 | 要用就完整打 / 改用 |
+|---|---|---|
+| `gwipe` | `git reset --hard && git clean -df` | 完整打 |
+| `gpristine` | `git reset --hard && git clean -dfx` | 完整打 |
+| `gclean` | `git clean --interactive -d` | 完整打 |
+| `grhh` | `git reset --hard` | 完整打 |
+| `grs` | `git restore` | 完整打 |
+| `grss` | `git restore --source` | 完整打 |
+| `gstc` | `git stash clear` | 完整打（最陰險的一個：一次刪光所有 stash） |
+| `gstd` | `git stash drop` | 完整打 |
+| `gpf!` | `git push --force` | 用 `--force-with-lease` |
+| `gbD` | `git branch -D` | 完整打 |
+| `grbs` | `git rebase --skip` | 完整打 |
+| `gp` | `git push` | **`gpush`** |
+| `gl` | `git pull` | **`gpull`** |
+
+`gp` / `gl` 不是破壞性的，移除是為了換掉舊習慣 ——
+`gl` 緊鄰 `glo` / `glog` / `glg`（都是 log），少打一個字母就從「看歷史」變成「拉取」。
+
+## git 內建 alias —— 跨 shell、跨 OS
+
+這些寫在 `git/.gitconfig` 的 `[alias]` 段，是 **git 自己讀的**，
+所以在 bash、fish、甚至 Windows 的 PowerShell 裡都一樣能用。
+代價是要多打 `git ` 四個字元。
+
+| 指令 | 展開 |
+|---|---|
+| `git st` | `status --short --branch` |
+| `git lg` | `log --graph --oneline --decorate --all` |
+| `git last` | `log -1 --stat` |
+| `git unstage` | `restore --staged`（移出暫存區，保留修改） |
+| `git amend` | `commit --amend --no-edit` |
+| `git undo` | `reset --soft HEAD~1`（撤銷 commit，變更留在暫存區） |
+| `git filelog` | `log --follow -p --`（單一檔案的完整歷史，跨改名） |
+| `git branches` | `branch -vv --sort=-committerdate` |
+
+> ⚠️ **最小安裝（公司機器）拿不到這一組** —— 它們在 `.gitconfig` 裡，
+> 而最小安裝不碰那個檔案。見[兩個已知缺口](#兩個已知缺口)。
+
+## 非 git
+
+| 指令 | 做什麼 | 最小安裝有嗎 |
+|---|---|---|
+| `git-audit` | ★ 機器消失前，找出只存在本機的工作 | ✅ |
+| `mkcd <dir>` | 建立目錄後直接進去 | ✅ |
+| `biggest [n]` | 目前目錄底下最大的 N 個檔案（預設 10） | ✅ |
+| `z <關鍵字>` | ★ 跳到常去的目錄（靠頻率 × 最近使用排名） | ✅ 需裝 zoxide |
+| `zi` | 互動選單挑目錄 | ✅ 需裝 zoxide |
+| `z -` | 回上一個目錄 | ✅ 需裝 zoxide |
+| `rg <字串>` | 搜檔案**內容**，取代 `grep -r` | ✅ 需裝 ripgrep |
+| `fd <檔名>` | 搜**檔名**，取代 `find` | ✅ 需裝 fd |
+| `bat <檔案>` | 語法高亮 + 行號，取代 `cat` | ✅ 需裝 bat |
+| `dot` | `cd ~/dotfiles` | ❌ 完整安裝才有 |
+| `zshrc` | 編輯 `~/dotfiles/zsh/.zshrc` | ❌ 完整安裝才有 |
+| `reload` | `exec zsh`（完整重跑啟動流程） | ❌ 直接打 `exec zsh` |
+
 ---
 
 # 兩種安裝情境

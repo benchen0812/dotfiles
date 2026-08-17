@@ -114,18 +114,90 @@ if [ "$MODE" = "check" ]; then
   external='z
 zi'
 
-  # 在你的登入 shell 裡查一個名字現在是什麼。
+  # ── 讀取「你現在的環境」：一次問完 ──────────────────────────────────
+  #
   # 一定要 -i（互動模式）才會載入 .zshrc，才看得到你現有的 alias。
-  probe_alias() {
-    "${SHELL:-/bin/zsh}" -ic "alias $1" 2>/dev/null \
-      | sed -E "s/^(alias )?$1=//; s/^'//; s/'$//" || true
-  }
-  # 函式與外部工具要查的是「這個名字現在是不是任何東西」——
-  # 可能是函式、alias，也可能是 PATH 裡的執行檔（那也算撞到，我們會蓋掉它）。
-  probe_any() {
-    "${SHELL:-/bin/zsh}" -ic "command -v $1" 2>/dev/null || true
+  #
+  # ⚠️ 這裡只 spawn 一次，不是每個名字 spawn 一次。
+  #
+  #    第一版是每個名字都 `$SHELL -ic "alias $name"` —— 等於把你的 .zshrc
+  #    完整跑 50 遍。在乾淨的機器上是 7 秒，但在一台有 oh-my-zsh、p10k、
+  #    nvm、公司初始化腳本的機器上，每次啟動 1～2 秒就變成一兩分鐘 ——
+  #    而且中途完全沒有輸出，看起來跟當機一模一樣。
+  #
+  #    「看起來像壞了」跟「真的壞了」對使用者是同一件事。
+  #
+  # < /dev/null 是另一道防護：spawn 出來的互動 shell 讀不到終端機，
+  # 萬一你的 .zshrc 裡有什麼在等輸入（p10k 設定精靈、ssh-agent 密碼、
+  # 公司的 y/n 確認），它會立刻拿到 EOF 而不是無限等待。
+  info "正在讀取你現有的環境（載入一次 ${SHELL##*/} 設定，可能要幾秒）…"
+
+  snapshot="$(mktemp)"
+  # shellcheck disable=SC2064
+  # 現在就展開 $snapshot 是刻意的 —— trap 觸發時那個變數可能已經不在了。
+  trap "rm -f '$snapshot'" EXIT
+
+  case "${SHELL:-}" in
+    */bash)
+      # bash 問不到「函式是哪個檔案定義的」，所以第二段只有名字。
+      # 代價：在已經完整安裝的 bash 機器上會有「自己撞自己」的假警報。
+      # 可以接受 —— 完整安裝走的是 zsh。
+      # 第二欄要補一個 ? 佔位 —— now_func_src 讀的是第二欄，
+      # 只吐名字的話它會回空字串，等於「這個函式不存在」，函式碰撞就漏報了。
+      "${SHELL}" -ic 'alias
+        echo "===FUNCS==="
+        declare -F | cut -d" " -f3 | while read -r _k; do echo "$_k ?"; done' \
+        < /dev/null > "$snapshot" 2>/dev/null || true
+      ;;
+    *)
+      # zsh：函式那段連「定義來源檔案」一起吐出來，用來排除自己撞自己。
+      "${SHELL:-/bin/zsh}" -ic '
+        alias
+        print -r -- "===FUNCS==="
+        zmodload zsh/parameter 2>/dev/null
+        for _k in ${(ko)functions}; do
+          print -r -- "$_k ${functions_source[$_k]:-?}"
+        done
+      ' < /dev/null > "$snapshot" 2>/dev/null || true
+      ;;
+  esac
+
+  if [ ! -s "$snapshot" ]; then
+    printf '讀不到你現有的環境（%s -i 沒有任何輸出）。\n' "${SHELL:-zsh}" >&2
+    printf '可以跳過檢查直接裝，但就看不到碰撞了：\n' >&2
+    printf '  ./work-install.sh -n   然後   ./work-install.sh\n' >&2
+    exit 1
+  fi
+
+  # 把快照切成兩段。之後所有查詢都是純文字比對，不再 spawn 任何東西。
+  aliases_now=$(sed -n '1,/^===FUNCS===$/p' "$snapshot" | sed '$d')
+  funcs_now=$(sed -n '/^===FUNCS===$/,$p' "$snapshot" | sed '1d')
+
+  info "讀到 $(printf '%s\n' "$aliases_now" | grep -c '=' || true) 個 alias、$(printf '%s\n' "$funcs_now" | grep -c . || true) 個函式"
+
+  # 查一個 alias 現在的值。空字串 = 這台機器沒有這個 alias。
+  now_alias() {
+    printf '%s\n' "$aliases_now" \
+      | sed -n "s/^\(alias \)\{0,1\}$1=//p" | head -1 | sed -E "s/^'//; s/'$//"
   }
 
+  # 查一個函式現在是哪個檔案定義的。空字串 = 沒有這個函式。
+  now_func_src() {
+    printf '%s\n' "$funcs_now" | awk -v n="$1" '$1 == n {print $2; exit}'
+  }
+
+  # 這個名字現在是「任何東西」嗎 —— alias、函式，或 PATH 裡的執行檔。
+  # 執行檔也算撞到：我們的函式會蓋掉它。
+  now_any() {
+    local _a _f
+    _a=$(now_alias "$1")
+    if [ -n "$_a" ]; then printf 'alias %s=%s\n' "$1" "$_a"; return; fi
+    _f=$(now_func_src "$1")
+    if [ -n "$_f" ]; then printf '函式（定義於 %s）\n' "$_f"; return; fi
+    command -v "$1" 2>/dev/null || true
+  }
+
+  echo
   act "碰撞檢查"
   echo
 
@@ -135,7 +207,7 @@ zi'
   found=0
   while IFS= read -r name; do
     if [ -z "$name" ]; then continue; fi
-    old=$(probe_alias "$name")
+    old=$(now_alias "$name")
     if [ -z "$old" ];  then continue; fi
     new=$(grep -hE "^alias $name=" "${SOURCED[@]}" | head -1 | sed -E "s/^alias $name=//; s/^'//; s/'.*$//")
     if [ -n "$new" ] && [ "$old" != "$new" ]; then
@@ -150,7 +222,7 @@ zi'
   found=0
   while IFS= read -r name; do
     if [ -z "$name" ]; then continue; fi
-    old=$(probe_alias "$name")
+    old=$(now_alias "$name")
     if [ -n "$old" ]; then
       printf '  🟡 %-8s 現在: %s\n' "$name" "$old"
       found=1; conflicts=$((conflicts + 1))
@@ -171,16 +243,13 @@ zi'
     # 但那就是我們自己那一份。自己撞自己是假警報，
     # 而假警報的真正代價是「讓人開始忽略真警報」。
     #
-    # $functions_source 來自 zsh/parameter 模組，會給出定義來源的檔案路徑。
-    # tail -1 是因為互動 shell 啟動時可能先吐出其他東西（p10k 之類）。
-    src=$("${SHELL:-/bin/zsh}" -ic \
-          "zmodload zsh/parameter 2>/dev/null; print -r -- \$functions_source[$name]" \
-          2>/dev/null | tail -1 || true)
+    # 來源資訊出自快照裡的 $functions_source（zsh/parameter 模組）。
+    src=$(now_func_src "$name")
     case "$src" in
       "$DOTFILES"/*) continue ;;
     esac
 
-    old=$(probe_any "$name")
+    old=$(now_any "$name")
     if [ -n "$old" ]; then
       printf '  🟠 %-8s 現在: %s\n' "$name" "$old"
       found=1; conflicts=$((conflicts + 1))
@@ -193,7 +262,7 @@ zi'
   found=0
   while IFS= read -r name; do
     if [ -z "$name" ]; then continue; fi
-    old=$(probe_any "$name")
+    old=$(now_any "$name")
 
     # 已經是 zoxide 自己定義的就不算碰撞（同樣是避免自己撞自己）。
     # zoxide 產生的 alias 一律指向 __zoxide_* 開頭的函式。
