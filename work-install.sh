@@ -83,10 +83,48 @@ already_installed() { [ -f "$RC" ] && grep -qF "$BEGIN_MARK" "$RC"; }
 # 最危險的情況是「名字相同但意義不同」—— 例如你習慣 gc = git checkout，
 # 而我們定義 gc = git commit。裝完之後 gc 會靜默做別的事，不會報錯。
 if [ "$MODE" = "check" ]; then
-  # 從我們的檔案抽出「會定義」與「會移除」的 alias 名稱
-  defines=$(grep -oE "^alias [a-zA-Z!]+" "$DOTFILES/shell/git-aliases.sh" | awk '{print $2}' | sort -u)
-  removes=$(grep -oE "^unalias '?[a-zA-Z!]+'?" "$DOTFILES/shell/git-aliases.sh" \
-            | awk '{print $2}' | tr -d "'" | sort -u)
+  # work-profile.sh 會載入的所有檔案。
+  #
+  # ⚠️ work-profile.sh 新增 source 時，這個清單也要跟著加 ——
+  #    否則新檔案定義的東西會被漏報，那比沒有檢查更危險
+  #    （你會以為檢查過了）。
+  SOURCED=()
+  for f in git-aliases.sh git-audit.sh functions.sh history.sh tools.sh; do
+    [ -f "$DOTFILES/shell/$f" ] && SOURCED+=("$DOTFILES/shell/$f")
+  done
+  if [ "${#SOURCED[@]}" -eq 0 ]; then
+    printf '找不到任何 shell/*.sh，無法檢查。\n' >&2
+    exit 1
+  fi
+
+  # grep 沒命中會回非零，配上 set -e 會直接中斷腳本 —— 所以每個都要 || true。
+  # -h 是「不要印檔名前綴」（grep 掃多個檔案時預設會加）。
+  defines=$(grep -hoE "^alias [a-zA-Z!_]+" "${SOURCED[@]}" 2>/dev/null \
+            | awk '{print $2}' | sort -u || true)
+  removes=$(grep -hoE "^unalias '?[a-zA-Z!_]+'?" "${SOURCED[@]}" 2>/dev/null \
+            | awk '{print $2}' | tr -d "'" | sort -u || true)
+
+  # 函式定義：抓 `名字() {` 這種行首寫法。
+  # 只抓小寫字母開頭的 —— _ 開頭的是內部輔助，不會撞到你會打的指令。
+  funcs=$(grep -hoE "^[a-z][a-zA-Z0-9_-]*\(\)" "${SOURCED[@]}" 2>/dev/null \
+          | tr -d '()' | sort -u || true)
+
+  # 由外部工具在 shell 啟動時「自己產生」的名字。
+  # 這些不在我們的檔案裡（是 zoxide init 吐出來的），grep 抓不到，只能寫死。
+  external='z
+zi'
+
+  # 在你的登入 shell 裡查一個名字現在是什麼。
+  # 一定要 -i（互動模式）才會載入 .zshrc，才看得到你現有的 alias。
+  probe_alias() {
+    "${SHELL:-/bin/zsh}" -ic "alias $1" 2>/dev/null \
+      | sed -E "s/^(alias )?$1=//; s/^'//; s/'$//" || true
+  }
+  # 函式與外部工具要查的是「這個名字現在是不是任何東西」——
+  # 可能是函式、alias，也可能是 PATH 裡的執行檔（那也算撞到，我們會蓋掉它）。
+  probe_any() {
+    "${SHELL:-/bin/zsh}" -ic "command -v $1" 2>/dev/null || true
+  }
 
   act "碰撞檢查"
   echo
@@ -97,9 +135,9 @@ if [ "$MODE" = "check" ]; then
   found=0
   while IFS= read -r name; do
     if [ -z "$name" ]; then continue; fi
-    old=$("${SHELL:-/bin/zsh}" -ic "alias $name" 2>/dev/null | sed -E "s/^(alias )?$name=//; s/^'//; s/'$//" || true)
+    old=$(probe_alias "$name")
     if [ -z "$old" ];  then continue; fi
-    new=$(grep -E "^alias $name=" "$DOTFILES/shell/git-aliases.sh" | head -1 | sed -E "s/^alias $name=//; s/^'//; s/'.*$//")
+    new=$(grep -hE "^alias $name=" "${SOURCED[@]}" | head -1 | sed -E "s/^alias $name=//; s/^'//; s/'.*$//")
     if [ -n "$new" ] && [ "$old" != "$new" ]; then
       printf '  🔴 %-8s 現在: %-28s → 之後: %s\n' "$name" "$old" "$new"
       found=1; conflicts=$((conflicts + 1))
@@ -112,13 +150,63 @@ if [ "$MODE" = "check" ]; then
   found=0
   while IFS= read -r name; do
     if [ -z "$name" ]; then continue; fi
-    old=$("${SHELL:-/bin/zsh}" -ic "alias $name" 2>/dev/null | sed -E "s/^(alias )?$name=//; s/^'//; s/'$//" || true)
+    old=$(probe_alias "$name")
     if [ -n "$old" ]; then
       printf '  🟡 %-8s 現在: %s\n' "$name" "$old"
       found=1; conflicts=$((conflicts + 1))
     fi
   done <<< "$removes"
   if [ "$found" = "0" ]; then info "（無）"; fi
+
+  echo
+  printf '\033[1m新增的函式撞到既有名字\033[0m\n'
+  found=0
+  while IFS= read -r name; do
+    if [ -z "$name" ]; then continue; fi
+
+    # 先問「這個函式是哪個檔案定義的」，是我們自己的就跳過。
+    #
+    # 為什麼需要這一步：在一台已經裝好完整 dotfiles 的機器上跑 -c，
+    # 會偵測到 mkcd / biggest / git-audit 已存在而報碰撞 ——
+    # 但那就是我們自己那一份。自己撞自己是假警報，
+    # 而假警報的真正代價是「讓人開始忽略真警報」。
+    #
+    # $functions_source 來自 zsh/parameter 模組，會給出定義來源的檔案路徑。
+    # tail -1 是因為互動 shell 啟動時可能先吐出其他東西（p10k 之類）。
+    src=$("${SHELL:-/bin/zsh}" -ic \
+          "zmodload zsh/parameter 2>/dev/null; print -r -- \$functions_source[$name]" \
+          2>/dev/null | tail -1 || true)
+    case "$src" in
+      "$DOTFILES"/*) continue ;;
+    esac
+
+    old=$(probe_any "$name")
+    if [ -n "$old" ]; then
+      printf '  🟠 %-8s 現在: %s\n' "$name" "$old"
+      found=1; conflicts=$((conflicts + 1))
+    fi
+  done <<< "$funcs"
+  if [ "$found" = "0" ]; then info "（無）"; fi
+
+  echo
+  printf '\033[1m外部工具會佔用的短名（zoxide）\033[0m\n'
+  found=0
+  while IFS= read -r name; do
+    if [ -z "$name" ]; then continue; fi
+    old=$(probe_any "$name")
+
+    # 已經是 zoxide 自己定義的就不算碰撞（同樣是避免自己撞自己）。
+    # zoxide 產生的 alias 一律指向 __zoxide_* 開頭的函式。
+    case "$old" in
+      *__zoxide_*) continue ;;
+    esac
+
+    if [ -n "$old" ]; then
+      printf '  🟠 %-8s 現在: %s\n' "$name" "$old"
+      found=1; conflicts=$((conflicts + 1))
+    fi
+  done <<< "$external"
+  if [ "$found" = "0" ]; then info "（無，或這台機器沒裝 zoxide）"; fi
 
   echo
   if [ "$conflicts" -eq 0 ]; then
@@ -128,6 +216,11 @@ if [ "$MODE" = "check" ]; then
     info "🔴 的要特別注意 —— 那些名字之後會做不同的事，而且不會報錯。"
     info "不想改變的話，在 .zshrc 的 source 那行「之後」再定義一次即可。"
   fi
+
+  echo
+  info "以下不列入碰撞，因為它們只在「這台機器沒設過」時才生效："
+  info "  FZF_DEFAULT_COMMAND / FZF_*_OPTS 等環境變數、HISTFILE"
+  info "會無條件覆蓋的只有 HISTSIZE / SAVEHIST 與七個 history setopt。"
   exit 0
 fi
 

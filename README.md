@@ -13,10 +13,15 @@
 |---|---|---|
 | **適用** | 你自己的機器、全新環境 | **公司機器**、不想動現有設定 |
 | **會做什麼** | 取代 `.zshrc` / `.gitconfig`（符號連結）、裝套件 | **只在現有 `.zshrc` 加一行** |
-| **動到現有設定嗎** | 會（原檔備份） | **完全不動** |
+| **動到哪些檔案** | `.zshrc`、`.gitconfig`、`.p10k.zsh`（原檔備份） | **只有 `.zshrc` 尾端加一段標記區塊** |
 | **需要 sudo** | 要 | 不用 |
+| **裝套件嗎** | 會（apt / brew） | **不會，工具要自己裝** |
 | **怎麼移除** | 從備份還原 | **`./work-install.sh -u`** |
-| **拿到什麼** | 全部 | git alias + `git-audit` |
+| **拿到什麼** | 全部 | git alias、`git-audit`、`mkcd`/`biggest`、歷史設定、fzf 鍵位、`z` |
+
+> 「只動一個檔案」不等於「什麼都沒變」——
+> alias 的意義會變，這是刻意的（那正是換掉舊習慣的機制）。
+> 完整的影響清單見[情境二](#情境二公司機器最小安裝)。
 
 ---
 
@@ -109,14 +114,64 @@ fatal: user.email is not set and useConfigOnly is set
 ### 安裝
 
 ```bash
+# 1. 拿到 repo
 git clone https://github.com/benchen0812/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
-./work-install.sh -c     # ★ 先檢查：會跟你現有的 alias 撞到什麼
+# 2. 裝工具（可選，但 fzf 是這裡最有價值的東西）
+#    這一步 work-install.sh 不會幫你做 —— 它刻意不裝任何套件。
+#    macOS：
+brew install fzf fd bat zoxide
+#    ⚠️ brew 裝完 fzf 會提示你跑 $(brew --prefix)/opt/fzf/install —— 不要跑。
+#       那支腳本會改你的 .zshrc。鍵位由 shell/tools.sh 負責綁。
+
+# 3. 檢查碰撞（★ 最重要的一步）
+./work-install.sh -c     # 會跟你現有的 alias / 函式撞到什麼
+
+# 4. 安裝
 ./work-install.sh -n     # 乾跑：只顯示會做什麼，不動任何檔案
-./work-install.sh        # 實際安裝
+./work-install.sh        # 實際安裝（會先備份 .zshrc）
 exec zsh                 # 生效
 ```
+
+第 2 步跳過也能裝 —— `shell/tools.sh` 全程用 `command -v` 守著，
+沒裝的工具就靜默跳過。之後任何時間補裝，下次開終端機自動生效，
+不用再改任何設定。
+
+### 實際會影響什麼
+
+| 類別 | 行為 | 風險 |
+|---|---|---|
+| **git alias** | 46 個新增、13 個移除。**名字撞到的會改變意義** | 🔴 見下面的 `-c` 檢查 |
+| `mkcd` / `biggest` / `git-audit` | 純新增函式 | 撞名才有影響，`-c` 會報 |
+| `HISTSIZE` / `SAVEHIST` | 調到 50000，但**只升不降** —— 已經設更大的不動 | 無，不會損失歷史 |
+| `HISTFILE` | **只在該機器沒設過時才設** | 無 |
+| 7 個 history `setopt` | 無條件設定。改變「之後怎麼記錄與搜尋」 | 低，不刪既有歷史 |
+| `FZF_*` 環境變數 | **只在該機器沒設過時才設** | 無 |
+| fzf 鍵位 `Ctrl-R`/`Ctrl-T`/`Alt-C` | 該機器沒綁過才綁（已有 omz fzf plugin 就不動） | 低 |
+| `z` / `zi` | zoxide 佔用，`-c` 會檢查撞名 | 撞名才有影響 |
+| **PATH** | **完全不動** | 無 |
+| `.gitconfig` / `.p10k.zsh` | **完全不動** | 無 |
+
+不想要其中某一項，在 `.zshrc` 的 source 那行**之後**覆蓋回去就行 ——
+後執行的贏。例如不習慣多視窗共享歷史：
+
+```zsh
+unsetopt SHARE_HISTORY
+```
+
+### macOS 額外注意
+
+- **`Alt-C` 預設是死的。** Option 鍵要先對應到 Meta：
+  iTerm2 把 Left Option 設成 `Esc+`；Terminal.app 勾「Use Option as Meta key」。
+  `Ctrl-R` 和 `Ctrl-T` 不受影響。
+- 沒有 brew 也不能 sudo 時，fzf 可以完全裝在家目錄：
+  ```bash
+  git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+  ~/.fzf/install --key-bindings --completion --no-update-rc
+  ```
+  `--no-update-rc` 保證它不改你的設定檔。但執行檔會在 `~/.fzf/bin`，
+  而我們刻意不動 PATH —— 所以這條路你要自己把它加進 PATH。
 
 ### ⚠️ 先跑 `-c` 檢查碰撞
 
@@ -131,12 +186,23 @@ $ ./work-install.sh -c
 
 會被移除的（打了會 command not found）
   🟡 gp       現在: git push
+
+新增的函式撞到既有名字
+  🟠 mkcd     現在: /usr/local/bin/mkcd
+
+外部工具會佔用的短名（zoxide）
+  🟠 z        現在: /Users/你/bin/z
 ```
 
 | 分級 | 意思 | 風險 |
 |---|---|---|
 | 🔴 | 名字保留，但**做不同的事** | **高** —— 不會報錯，你會以為它還是舊行為 |
 | 🟡 | 名字消失 | 低 —— `command not found`，大聲失敗 |
+| 🟠 | 我們新增的東西蓋掉同名的既有指令 | 中 —— 通常是「（無）」 |
+
+`-c` 檢查的範圍是 `work-profile.sh` 會載入的**所有**檔案，包含 alias、
+`unalias`、函式，以及 zoxide 自己產生的 `z`/`zi`。
+它也會自動排除「你自己那份 dotfiles」—— 在已經完整安裝的機器上跑不會自己撞自己。
 
 不想改變某個 🔴 的話，在 `.zshrc` 的 source 那行**之後**再定義一次：
 
@@ -207,33 +273,43 @@ alias gp='git push'
 alias gl='git pull'
 ```
 
-### 也想要 fzf？
+### fzf 就在最小安裝裡，但執行檔要自己裝
 
-`work-profile.sh` **不裝任何東西**，所以 fzf 不在裡面。但如果那台機器
-已經有 fzf（或你裝得起來），可以另外加。
-
-先檢查：
+`work-profile.sh` **不裝任何套件**，所以你要自己把執行檔弄起來：
 
 ```bash
-command -v fzf              # 有沒有裝
-alias | grep -c fzf         # oh-my-zsh 的 fzf plugin 有沒有啟用
+brew install fzf fd bat zoxide              # macOS
+sudo apt install fzf fd-find bat zoxide     # Debian / Ubuntu（需要權限）
 ```
 
-| 情況 | 做法 |
-|---|---|
-| 有 fzf、`plugins` 已含 `fzf` | **什麼都不用做**，`Ctrl-R` / `Ctrl-T` 已經能用 |
-| 有 fzf、但 plugin 沒啟用 | 在現有 `.zshrc` 的 `plugins=(...)` 加上 `fzf` |
-| 沒有 fzf | `sudo apt install fzf`（需要權限） |
+鍵位不用你管 —— `shell/tools.sh` 會自己綁。
 
-裝好之後想要我們的優化設定（用 `fd` 掃描、`bat` 預覽），
-把 `zsh/custom/50-tools.zsh` 也 source 進去：
+**為什麼要自己綁，不能靠 oh-my-zsh 的 fzf plugin：**
 
-```zsh
-[ -f ~/dotfiles/zsh/custom/50-tools.zsh ] && source ~/dotfiles/zsh/custom/50-tools.zsh
+最小安裝那一行加在 `.zshrc` 的**最後**，而那個時間點 omz 早就跑完了，
+加不了 plugin。如果 `tools.sh` 只設 `FZF_*` 環境變數，
+`Ctrl-R` / `Ctrl-T` / `Alt-C` 一個都不會動 ——
+因為根本沒有人去註冊那些 ZLE widget。
+
+**「裝了 fzf」和「fzf 的鍵位活著」是兩件事。**
+
+`tools.sh` 依序探測六個位置，第一個命中的就用：
+
+```
+1. fzf --zsh                        fzf ≥ 0.48 自己吐出整套（含補完）
+2. ~/.fzf/shell/                    git clone 裝法
+3. /opt/homebrew/opt/fzf/shell/     Mac，Apple Silicon
+4. /usr/local/opt/fzf/shell/        Mac，Intel
+5. /usr/share/doc/fzf/examples/     Debian / Ubuntu
+6. /usr/share/fzf/                  Arch 等
 ```
 
-那個檔案裡每一項都用 `command -v` 守住 —— **沒裝 fd / bat / zoxide 的機器會靜默跳過**，
-不會噴錯，所以加了也安全。
+如果該機器**已經有** omz 的 fzf plugin 綁好了，`tools.sh` 會偵測到
+（查 `fzf-history-widget` 這個函式在不在）而跳過，不去動人家的綁定。
+
+沒裝 fd / bat / zoxide 的機器會靜默跳過（每一項都用 `command -v` 守住），
+所以先只裝 fzf 也完全沒問題 —— **`Ctrl-R` 搜歷史一個外部工具都不需要**，
+而那是三個鍵位裡最常用的。
 
 fzf 完整用法見 [`shell/TOOLS.md`](shell/TOOLS.md)。
 
@@ -340,22 +416,25 @@ git-audit && echo "確認安全，可以進行破壞性操作"
 ├── MANIFEST.md               ★ 每個檔案是什麼、為什麼、以及「刻意不做什麼」
 ├── git/
 │   └── .gitconfig            → ~/.gitconfig  （純行為，不含身分）
-├── shell/
-│   ├── git-aliases.sh        ★ 可攜的 git alias，複製到任何機器都能用
-│   ├── git-audit.sh          ★ 可攜的稽核工具，找出只存在本機的工作
-│   ├── work-profile.sh       ★ 公司機器入口：一行 source，不動現有設定
+├── shell/                    ★ 可攜層：自足、零相依，兩種安裝情境共用同一份
+│   ├── git-aliases.sh        git alias（46 新增 / 13 移除）
+│   ├── git-audit.sh          稽核工具，找出只存在本機的工作
+│   ├── functions.sh          mkcd、biggest
+│   ├── history.sh            歷史長度與行為（zsh 專用，對 bash 早退）
+│   ├── tools.sh              fzf 鍵位與設定、zoxide
+│   ├── work-profile.sh       ★ 公司機器入口：一行 source，載入上面全部
 │   ├── README.md             git alias 使用手冊（按情境查，附操作範例）
 │   └── TOOLS.md              終端機工具手冊（fzf / zoxide / rg / fd / bat）
 └── zsh/
     ├── .zshrc                → ~/.zshrc      （只放載入邏輯）
     ├── .p10k.zsh             → ~/.p10k.zsh   （powerlevel10k 外觀）
-    ├── custom/               ★ 實際設定在這裡，依編號順序自動載入
-    │   ├── 00-exports.zsh    PATH、EDITOR
-    │   ├── 10-history.zsh    歷史紀錄
-    │   ├── 20-aliases.zsh    alias
-    │   ├── 30-functions.zsh  函式
-    │   ├── 40-git.zsh        載入 shell/git-aliases.sh 與 git-audit.sh
-    │   └── 50-tools.zsh      zoxide / fzf 的 shell 整合
+    ├── custom/               依編號順序自動載入。多數只是一行 source shell/
+    │   ├── 00-exports.zsh    PATH、EDITOR（不可攜：PATH 順序屬於機器）
+    │   ├── 10-history.zsh    → shell/history.sh
+    │   ├── 20-aliases.zsh    dot、zshrc、reload（不可攜：依賴 ~/dotfiles）
+    │   ├── 30-functions.zsh  → shell/functions.sh
+    │   ├── 40-git.zsh        → shell/git-aliases.sh、git-audit.sh
+    │   └── 50-tools.zsh      → shell/tools.sh
     └── reference/
         └── omz-template.zsh  oh-my-zsh 原始樣板存檔，純備查
 ```
@@ -366,9 +445,10 @@ git-audit && echo "確認安全，可以進行破壞性操作"
 
 | 想做什麼 | 怎麼做 |
 |---|---|
-| 加一個 alias | 編輯 `zsh/custom/20-aliases.zsh`，然後 `reload` |
-| 加一個函式 | 編輯 `zsh/custom/30-functions.zsh` |
-| 加一整類新設定 | 新增 `zsh/custom/50-xxx.zsh`（編號要補零） |
+| 加一個函式／設定，**想讓公司機器也吃到** | 編輯 `shell/` 底下對應的檔案 |
+| 加一個只對這台機器有意義的 alias | 編輯 `zsh/custom/20-aliases.zsh`，然後 `reload` |
+| 加一整類新設定 | 可攜的放 `shell/`，不可攜的新增 `zsh/custom/60-xxx.zsh`（編號補零） |
+| 新增 `shell/` 檔案後 | ★ 記得同步更新 `work-profile.sh` 的 source 清單與 `work-install.sh` 的 `-c` 檢查清單 |
 | 改 git 行為 | 編輯 `git/.gitconfig` |
 | 改 git 身分 | 編輯 `~/.gitconfig.local`（**不在這個 repo**） |
 | 暫時停用某段設定 | 把檔案改名加 `.off`，例如 `20-aliases.zsh.off` |
@@ -453,6 +533,44 @@ cd ~/dotfiles && ./install.sh && ./install.sh
 **最後一步：開一個全新的終端機視窗。** 上面的檢查跑在既有 shell 裡，
 有些問題（p10k 即時提示、gitstatus）只有在真正的新 session 才看得出來。
 
+### 最小安裝的驗證（公司機器）
+
+上面第 1、2、3、6 項不適用（沒有符號連結、不碰 `.gitconfig`）。改跑這些：
+
+```bash
+# 1. alias 載入了嗎
+alias gpush gss
+
+# 2. 危險的移除了嗎（應全部 command not found）
+for a in gwipe gpristine grhh gp gl; do
+  alias $a >/dev/null 2>&1 && echo "✗ $a 還在" || echo "✓ $a 已移除"
+done
+
+# 3. 函式載入了嗎（應顯示 function）
+whence -w mkcd biggest git-audit
+
+# 4. 歷史設定生效了嗎（應為 50000 或更大）
+echo "$HISTSIZE / $SAVEHIST"
+
+# 5. ★ fzf 鍵位活著嗎 —— 這是最容易「以為裝好了其實沒有」的一項
+bindkey '^R'      # 應顯示 fzf-history-widget，不是 history-incremental-search-backward
+bindkey '^T'      # 應顯示 fzf-file-widget
+bindkey '\ec'     # 應顯示 fzf-cd-widget（macOS 見下方 Option 鍵注意事項）
+
+# 6. fzf 用的是 fd 而不是 find 嗎
+echo "$FZF_DEFAULT_COMMAND"
+
+# 7. 冪等性（第二次應顯示「已經安裝過了」）
+cd ~/dotfiles && ./work-install.sh
+```
+
+第 5 項如果 `^R` 顯示的不是 `fzf-history-widget`，順序這樣查：
+`command -v fzf`（執行檔在不在）→ 在的話看 `tools.sh` 探測的六個路徑
+哪個該中（`ls /opt/homebrew/opt/fzf/shell/`）。
+
+**要真正確認可逆**，裝完先跑一次 `./work-install.sh -u` 再裝回來 ——
+`.zshrc` 應該完全回到原狀（連結尾空行都一樣）。
+
 ---
 
 ## `bootstrap.sh` 會裝什麼
@@ -526,8 +644,8 @@ git branch | fzf              # 用選的切分支
 kill -9 $(ps aux | fzf | awk '{print $2}')
 ```
 
-> 這就是為什麼歷史紀錄設成 50000 筆（`zsh/custom/10-history.zsh`）——
-> `Ctrl-R` 的價值完全取決於歷史夠不夠長。
+> 這就是為什麼歷史紀錄設成 50000 筆（`shell/history.sh`）——
+> `Ctrl-R` 的價值完全取決於歷史夠不夠長。歷史是 fzf 的燃料。
 
 ### zoxide —— 不用再打長路徑
 

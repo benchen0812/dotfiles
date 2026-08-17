@@ -9,8 +9,23 @@
 
 ### 在新機器上部署（含公司機器）
 
+**建議走這條** —— 能 clone 就用腳本，它會先備份、可一鍵移除、還能先檢查碰撞：
+
 ```bash
-# 1. 把檔案弄過去
+git clone https://github.com/benchen0812/dotfiles.git ~/dotfiles
+cd ~/dotfiles
+./work-install.sh -c     # ★ 先看會跟現有 alias 撞到什麼
+./work-install.sh
+exec zsh
+```
+
+這條路除了 git alias，還會一起拿到 `git-audit`、`mkcd`/`biggest`、
+歷史設定與 fzf 鍵位。完整清單見[根目錄 README](../README.md#情境二公司機器最小安裝)。
+
+**只要 git alias、而且那台機器不能 clone** 的話（沒網路、不給裝 git 之類）：
+
+```bash
+# 1. 把單一檔案弄過去 —— 它零相依，一個檔案就能獨立運作
 scp ~/dotfiles/shell/git-aliases.sh 目標機器:~/
 
 # 2. 在該機器的 ~/.zshrc（或 ~/.bashrc）最後面加一行

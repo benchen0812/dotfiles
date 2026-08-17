@@ -83,19 +83,59 @@ fatal: user.email is not set and useConfigOnly is set
 | — | `~/.gitconfig.local` | git **身分**設定。**不在這個 repo**，由 `bootstrap.sh` 產生範本 |
 | `install.sh` | — | 建立符號連結。可無限次重跑 |
 | `bootstrap.sh` | — | 新機器裝套件與 plugin。一台機器跑一次 |
+| `work-install.sh` | — | 最小安裝：只在現有 `.zshrc` 尾端加一段標記區塊 |
+| `shell/*.sh` | 不連結 | **可攜層**。自足、零相依、bash 與 zsh 都能用 |
+
+## `shell/` 是可攜層 —— 為什麼要跟 `zsh/custom/` 分開
+
+`zsh/custom/*.zsh` 綁在 `.zshrc` 的載入迴圈上，只有「完整安裝」的機器有。
+但公司機器走的是「在現有 `.zshrc` 加一行」的模式，吃不到那個迴圈。
+
+所以真正的設定內容放在 `shell/`，兩邊都只是薄薄一層 source：
+
+```
+zsh/custom/10-history.zsh    →  source shell/history.sh    ┐
+zsh/custom/30-functions.zsh  →  source shell/functions.sh  ├→ 同一份來源
+zsh/custom/40-git.zsh        →  source shell/git-aliases.sh│
+zsh/custom/50-tools.zsh      →  source shell/tools.sh      ┘
+shell/work-profile.sh        →  source 上面全部（公司機器的入口）
+```
+
+**關鍵是「同一份」**。如果兩邊各寫一份，改一次要記得改兩個地方 ——
+而兩份一定會發散，發散之後肌肉記憶就失效了。
+肌肉記憶只有在「每台機器都一樣」時才有價值。
+
+| 檔案 | 內容 | shell |
+|---|---|---|
+| `git-aliases.sh` | 46 個 alias，並移除 13 個危險的 | bash + zsh |
+| `git-audit.sh` | `git-audit` 函式 | bash + zsh |
+| `functions.sh` | `mkcd`、`biggest` | bash + zsh |
+| `history.sh` | 歷史長度與行為 | **zsh 專用**（對 bash 早退） |
+| `tools.sh` | fzf 鍵位與設定、zoxide | bash + zsh |
+| `work-profile.sh` | 公司機器入口，source 上面全部 | bash + zsh |
+
+`shell/` 底下的檔案有一條額外規則：**只能新增指令，不能改掉既有指令的行為**
+（`git-aliases.sh` 是唯一的例外，而那是刻意的，所以才需要 `-c` 檢查）。
+理由是它們會被載進別人已經在用的機器。
 
 ## `zsh/custom/` 的檔名編號
 
 數字前綴決定載入順序，這是有意義的：後面的檔案可以用到前面定義的東西。
 
-| 檔案 | 內容 |
-|---|---|
-| `00-exports.zsh` | PATH、`EDITOR` 等環境變數。**最先載入**，後面全部依賴它 |
-| `10-history.zsh` | 歷史紀錄長度與行為 |
-| `20-aliases.zsh` | alias |
-| `30-functions.zsh` | 需要參數處理或多行邏輯的函式 |
+| 檔案 | 內容 | 實際內容在哪 |
+|---|---|---|
+| `00-exports.zsh` | PATH、`EDITOR` 等環境變數。**最先載入**，後面全部依賴它 | 就在這裡（**不可攜** —— PATH 順序屬於機器） |
+| `10-history.zsh` | 歷史紀錄長度與行為 | `shell/history.sh` |
+| `20-aliases.zsh` | alias | 就在這裡（`dot`、`zshrc` 只對本機有意義） |
+| `30-functions.zsh` | 需要參數處理或多行邏輯的函式 | `shell/functions.sh` |
+| `40-git.zsh` | git alias 與 `git-audit` | `shell/git-aliases.sh`、`shell/git-audit.sh` |
+| `50-tools.zsh` | fzf、zoxide 的 shell 整合 | `shell/tools.sh` |
 
-要加新類別就沿用這個編號規則，例如 `40-git.zsh`、`50-fzf.zsh`。
+要加新類別就沿用這個編號規則，例如 `60-docker.zsh`。
+
+**新增設定時先問一句：這東西在一台「只有最小安裝」的機器上有意義嗎？**
+有 → 寫進 `shell/`，這裡只留一行 source。
+沒有（例如依賴 `~/dotfiles` 存在、或會改 PATH 順序）→ 才直接寫在這裡。
 
 **編號一定要補零用固定寬度。** 字母排序下 `10-` 會排在 `2-` 前面，
 用 `02-` `10-` 才不會出事。跳號跳 10 是為了留空間插隊（`05-` 之類）。

@@ -1,14 +1,10 @@
 # 自訂函式
 #
-# alias 和 function 的分界：需要參數處理、條件判斷、多行邏輯的，寫成 function。
-# 單純換個名字的，寫成 alias。
-
-# 建立目錄後直接進去。`mkdir -p a/b/c && cd a/b/c` 的簡寫。
-mkcd() {
-  mkdir -p -- "$1" && cd -- "$1"
-}
-
-# 找出目前目錄底下最大的 N 個檔案（預設 10 個）
-biggest() {
-  du -ah . 2>/dev/null | sort -rh | head -n "${1:-10}"
-}
+# 實際內容在 ~/dotfiles/shell/functions.sh —— 那是「可攜版」，
+# 自足、零相依，bash 與 zsh 都能用，公司機器也吃得到同一份。
+#
+# 要加新函式就加在那個檔案裡，除非它「只在有整套 dotfiles 的機器上才有意義」
+# —— 那種才留在這裡。
+#
+# 這跟 40-git.zsh 是同一個模式。
+source "$HOME/dotfiles/shell/functions.sh"

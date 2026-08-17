@@ -1,6 +1,9 @@
 # 終端機工具手冊
 
-`bootstrap.sh` 安裝的工具怎麼用。設定在 `zsh/custom/50-tools.zsh`（每行都有註解）。
+`bootstrap.sh` 安裝的工具怎麼用。設定在 [`tools.sh`](tools.sh)（每行都有註解）。
+
+那個檔案是**可攜**的：公司機器用最小安裝（`work-install.sh`）也吃得到同一份 ——
+包含 fzf 的鍵位。工具本身要自己 `brew install`，`work-install.sh` 刻意不裝套件。
 
 git 相關的另外看 [`README.md`](README.md)。
 
@@ -66,6 +69,11 @@ $ vim src/connectors/web/web-plugin.ts
 
 跟 `z` 的差別：`Alt-C` 搜的是**當前目錄底下**的所有子目錄；`z` 搜的是**你去過的**目錄（可能在任何地方）。
 
+> ⚠️ **macOS 上這個鍵預設是死的。** Option 鍵要先對應到 Meta：
+> iTerm2 把 Left Option 設成 `Esc+`；Terminal.app 勾「Use Option as Meta key」。
+> 這是終端機的設定問題，不是 fzf 或我們的設定有問題 ——
+> `Ctrl-R` 和 `Ctrl-T` 不受影響。
+
 ---
 
 ## 模糊搜尋的語法（很多人不知道）
@@ -102,7 +110,11 @@ cd $(fd --type d | fzf)                           # 用選的進目錄
 
 ## 我們的設定，以及為什麼
 
-寫在 `zsh/custom/50-tools.zsh`：
+寫在 [`tools.sh`](tools.sh)。
+
+**所有 `FZF_*` 都只在「該機器沒設過」時才設** —— 因為這個檔案會被載進
+公司機器，覆蓋人家既有的 fzf 設定等於安靜地改變既有行為。
+沒有既有設定的機器（絕大多數）行為跟直接 `export` 完全一樣。
 
 ### `FZF_DEFAULT_COMMAND='fd --type f --hidden --exclude .git'`
 
