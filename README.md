@@ -47,16 +47,59 @@
 > Apple 自己叫 Option。兩邊各有慣例，指的是同一顆鍵。
 
 這些不是我們裝的，是 zsh 的 emacs 鍵位模式本來就有。但在 macOS 上
-**整組預設都是死的**，因為 Option 鍵沒有對應到 Meta：
+**整組預設都是死的**，因為 Option 鍵沒有對應到 Meta。
 
-| 鍵 | 做什麼 |
-|---|---|
-| `Alt-.` | ★ 插入**上一個指令的最後一個參數**。`ls 長路徑` → `cd Alt-.` |
-| `Alt-B` / `Alt-F` | 游標按「單字」左右移動，不用一個一個字元按 |
-| `Alt-Backspace` | 刪掉前面一個**單字** |
-| `Alt-D` | 刪掉後面一個**單字** |
-| `Alt-T` | 交換游標前後兩個單字 |
-| `Alt-C` | fzf 的搜目錄並 cd（上表那個） |
+**按法**：按住 Option 不放，再按第二個鍵，然後兩顆一起放掉 ——
+跟按 `Ctrl-C` 是同一種按法，不是先按 Option 再按下一個。
+
+| Mac 上怎麼按 | 文件慣用寫法 | 做什麼 |
+|---|---|---|
+| `Option` + `.`（句點） | `Alt-.` | ★ 插入**上一個指令的最後一個參數** |
+| `Option` + `B` | `Alt-B` | 游標往左跳一個**單字**（**B**ackward） |
+| `Option` + `F` | `Alt-F` | 游標往右跳一個**單字**（**F**orward） |
+| `Option` + `delete` | `Alt-Backspace` | 刪掉游標**前面**一整個單字 |
+| `Option` + `D` | `Alt-D` | 刪掉游標**後面**一整個單字（**D**elete） |
+| `Option` + `T` | `Alt-T` | 交換游標前後兩個單字 |
+| `Option` + `C` | `Alt-C` | 跳出 fzf 目錄選單，選了直接 cd 過去 |
+
+> Mac 上的 `delete` 就是 Return 上面那顆退格鍵（Windows 鍵盤叫 Backspace）。
+
+這些是在**指令提示列上打字時**用的（zsh 的行編輯），不是在 vim 裡面。
+
+#### 三個實際例子
+
+**`Option` + `.` —— 最值錢的一個**
+
+```
+$ ls ~/work/backend/services/auth
+（看完了，想進去那個目錄）
+
+$ cd                                 ← 打完 cd 空格，按 Option + .
+
+$ cd ~/work/backend/services/auth    ← 路徑自動補上
+```
+
+不用重打、不用複製、不用按上鍵翻回去編輯。再按一次會換成**再上一個**指令的
+最後參數，可以一直往回翻。
+
+**`Option` + `B` / `F` —— 改指令中間的字**
+
+```
+$ git commit -m "fix the login bug"
+                            ↑ 想把 login 改掉
+```
+
+用 `←` 要按 9 次。`Option` + `B` 按兩次就到了（一次跳一個單字）。
+
+**`Option` + `delete` —— 刪掉打錯的那一段**
+
+```
+$ git push origin featuer-branch     ← 分支名打錯
+                  ↑
+按 Option + delete → $ git push origin
+```
+
+一次刪掉整個 `featuer-branch`，不用按 15 次退格。
 
 macOS 的設定方式與代價見 [macOS 額外注意](#macos-額外注意)。
 

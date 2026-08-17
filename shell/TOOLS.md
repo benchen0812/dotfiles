@@ -25,6 +25,19 @@ git 相關的另外看 [`README.md`](README.md)。
 | `Alt-B` / `Alt-F` | 游標按「單字」左右移動 | zsh 內建 |
 | `Alt-Backspace` | 刪掉前面一個**單字** | zsh 內建 |
 | `Alt-D` | 刪掉後面一個**單字** | zsh 內建 |
+| `Alt-T` | 交換游標前後兩個單字 | zsh 內建 |
+
+**Mac 上 `Alt` 就是 `Option`**，按法是「按住 Option 不放，再按第二個鍵」：
+
+| 文件寫 | Mac 上按 |
+|---|---|
+| `Alt-.` | `Option` + `.`（句點） |
+| `Alt-B` / `Alt-F` | `Option` + `B` / `Option` + `F` |
+| `Alt-Backspace` | `Option` + `delete`（Return 上面那顆退格鍵） |
+| `Alt-D` | `Option` + `D` |
+| `Alt-C` | `Option` + `C` |
+
+實際使用例子見[根目錄 README 的 Cheat Sheet](../README.md#metaalt鍵位--zsh-內建但-macos-要先設定)。
 
 > **Mac 上的 `Alt` 就是 `Option`（`⌥`）**，在 `control` 和 `command` 之間，
 > 空白鍵左右各一顆。文件寫「Alt」是因為終端機／zsh 的慣例是 Meta / Alt，
