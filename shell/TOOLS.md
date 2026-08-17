@@ -26,7 +26,11 @@ git 相關的另外看 [`README.md`](README.md)。
 | `Alt-Backspace` | 刪掉前面一個**單字** | zsh 內建 |
 | `Alt-D` | 刪掉後面一個**單字** | zsh 內建 |
 
-> macOS 上所有 `Alt-` 開頭的都要先設 Option 鍵，見下方 `Alt-C` 那一節。
+> **Mac 上的 `Alt` 就是 `Option`（`⌥`）**，在 `control` 和 `command` 之間，
+> 空白鍵左右各一顆。文件寫「Alt」是因為終端機／zsh 的慣例是 Meta / Alt，
+> Apple 自己叫 Option —— 同一顆鍵。
+>
+> macOS 上所有 `Alt-` 開頭的都要先設定那顆鍵才會活，見下方 `Alt-C` 那一節。
 
 ## 速查：新增的指令
 
