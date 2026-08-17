@@ -111,7 +111,7 @@ shell/work-profile.sh        →  source 上面全部（公司機器的入口）
 | `git-audit.sh` | `git-audit` 函式 | bash + zsh |
 | `functions.sh` | `mkcd`、`biggest` | bash + zsh |
 | `history.sh` | 歷史長度與行為 | **zsh 專用**（對 bash 早退） |
-| `tools.sh` | fzf 鍵位與設定、zoxide | bash + zsh |
+| `tools.sh` | fzf 鍵位與設定、zoxide、灰字建議與語法高亮 plugin | bash + zsh |
 | `work-profile.sh` | 公司機器入口，source 上面全部 | bash + zsh |
 
 `shell/` 底下的檔案有一條額外規則：**只能新增指令，不能改掉既有指令的行為**

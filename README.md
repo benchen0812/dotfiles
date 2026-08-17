@@ -422,8 +422,11 @@ cd ~/dotfiles
 #    這一步 work-install.sh 不會幫你做 —— 它刻意不裝任何套件。
 #    macOS：
 brew install fzf fd bat zoxide
+brew install zsh-autosuggestions zsh-syntax-highlighting   # 灰字建議 + 語法高亮
 #    ⚠️ brew 裝完 fzf 會提示你跑 $(brew --prefix)/opt/fzf/install —— 不要跑。
 #       那支腳本會改你的 .zshrc。鍵位由 shell/tools.sh 負責綁。
+#    ⚠️ 那兩個 plugin 也會提示你在 .zshrc 加 source —— 同樣不要加，
+#       shell/tools.sh 會自己找檔案載入。
 
 # 3. 檢查碰撞（★ 唯一需要你做判斷的一步）
 ./work-install.sh -c     # 會跟你現有的 alias / 函式 / 指令撞到什麼
@@ -460,6 +463,7 @@ bindkey '^R'             # 應顯示 fzf-history-widget
 | 7 個 history `setopt` | 無條件設定。改變「之後怎麼記錄與搜尋」 | 低，不刪既有歷史 |
 | `FZF_*` 環境變數 | **只在該機器沒設過時才設** | 無 |
 | fzf 鍵位 `Ctrl-R`/`Ctrl-T`/`Alt-C` | 該機器沒綁過才綁（已有 omz fzf plugin 就不動） | 低 |
+| 灰字歷史建議、語法高亮 | 該機器沒載過才載（兩個第三方 plugin，要自己裝） | 低 |
 | `z` / `zi` | zoxide 佔用，`-c` 會檢查撞名 | 撞名才有影響 |
 | **PATH** | **完全不動** | 無 |
 | `.gitconfig` / `.p10k.zsh` | **完全不動** | 無 |
@@ -608,6 +612,7 @@ cd ~/dotfiles && ./work-install.sh -u
 | 載入 `git-audit`、`mkcd`、`biggest` | 碰 `PATH`（公司可能有自己包的 toolchain wrapper） |
 | 設歷史長度與行為（`HISTFILE` 不覆蓋） | 建任何符號連結 |
 | 綁 fzf 鍵位、載入 `z` | 裝任何套件（工具要自己 `brew install`） |
+| 載入灰字建議與語法高亮 plugin | 把 plugin clone 下來（那是 `bootstrap.sh` 的事） |
 
 唯一被修改的檔案是 `~/.zshrc`，而且只在尾端加一段標記區塊 ——
 `-u` 可以精準移除，`.zshrc` 會回到位元組層級的原狀。
@@ -923,6 +928,9 @@ done
 
 # 3. 函式載入了嗎（應顯示 function）
 whence -w mkcd biggest git-audit
+
+# 3b. 灰字建議與語法高亮載入了嗎（要顯示 function）
+whence -w _zsh_autosuggest_start _zsh_highlight
 
 # 4. 歷史設定生效了嗎（應為 50000 或更大）
 echo "$HISTSIZE / $SAVEHIST"

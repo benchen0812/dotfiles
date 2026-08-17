@@ -225,3 +225,68 @@ if command -v zoxide >/dev/null 2>&1; then
     eval "$(zoxide init bash)"
   fi
 fi
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# zsh plugin —— 灰字建議與語法高亮
+# ═══════════════════════════════════════════════════════════════════════
+#
+# 這兩個是別人的 repo，不在我們的 dotfiles 裡：
+#   zsh-autosuggestions       打字時右邊出現灰字的歷史建議，→ 接受整行
+#   zsh-syntax-highlighting   指令存在就綠色、不存在就紅色，打錯當場看到
+#
+# 在完整安裝的機器上，它們由 bootstrap.sh clone 到
+# ~/.oh-my-zsh/custom/plugins/，再由 .zshrc 的 plugins 陣列載入。
+#
+# 但最小安裝那一行加在 .zshrc 最後，加不了 omz plugin ——
+# 跟 fzf 鍵位是同一個問題。所以這裡也自己找檔案來 source。
+#
+# 公司機器要先自己裝：
+#   brew install zsh-autosuggestions zsh-syntax-highlighting     # macOS
+#   sudo apt install zsh-autosuggestions zsh-syntax-highlighting # Debian/Ubuntu
+#
+# 沒裝就靜默跳過，跟這個檔案裡其他每一段一樣。
+if [ -n "$ZSH_VERSION" ]; then
+
+  # 在各發行版常見的位置找 plugin 主檔案，第一個命中的就 source。
+  #
+  # 命名慣例夠一致，所以可以把目錄名與檔名都用同一個參數組出來 ——
+  # 兩個 plugin 共用這一份探測邏輯，不用寫兩遍。
+  _tools_load_plugin() {
+    local _name="$1" _f
+    for _f in \
+      "/opt/homebrew/share/$_name/$_name.zsh" \
+      "/usr/local/share/$_name/$_name.zsh" \
+      "/usr/share/$_name/$_name.zsh" \
+      "/usr/share/zsh/plugins/$_name/$_name.zsh" \
+      "$HOME/.oh-my-zsh/custom/plugins/$_name/$_name.zsh" \
+      "$HOME/.zsh/$_name/$_name.zsh"
+    do
+      if [ -f "$_f" ]; then
+        # shellcheck disable=SC1090
+        . "$_f"
+        return 0
+      fi
+    done
+    return 1
+  }
+
+  # 已經載入就不重載 —— 完整安裝的機器上 omz 已經載過了。
+  # 重複載入 zsh-syntax-highlighting 會重複註冊 hook，實際會出問題，
+  # 不像 fzf 鍵位那樣只是無害地重綁。
+  #
+  # 偵測用的是 plugin 自己定義的內部函式（實機驗證過的名字）。
+  whence -w _zsh_autosuggest_start >/dev/null 2>&1 \
+    || _tools_load_plugin zsh-autosuggestions
+
+  # ⚠️ zsh-syntax-highlighting 一定要最後載入。
+  #
+  # 它在啟動時會掃描當下已經註冊了哪些指令與 alias 來建立高亮規則，
+  # 所以任何在它之後才定義的東西都不會被正確上色。
+  # 這也是為什麼這一段放在整個檔案的最後 ——
+  # 而 tools.sh 又是 work-profile.sh 最後 source 的檔案。
+  whence -w _zsh_highlight >/dev/null 2>&1 \
+    || _tools_load_plugin zsh-syntax-highlighting
+
+  unset -f _tools_load_plugin 2>/dev/null || true
+fi
