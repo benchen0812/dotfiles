@@ -125,18 +125,29 @@ brew install fzf fd bat zoxide
 #    ⚠️ brew 裝完 fzf 會提示你跑 $(brew --prefix)/opt/fzf/install —— 不要跑。
 #       那支腳本會改你的 .zshrc。鍵位由 shell/tools.sh 負責綁。
 
-# 3. 檢查碰撞（★ 最重要的一步）
-./work-install.sh -c     # 會跟你現有的 alias / 函式撞到什麼
+# 3. 檢查碰撞（★ 唯一需要你做判斷的一步）
+./work-install.sh -c     # 會跟你現有的 alias / 函式 / 指令撞到什麼
 
 # 4. 安裝
 ./work-install.sh -n     # 乾跑：只顯示會做什麼，不動任何檔案
 ./work-install.sh        # 實際安裝（會先備份 .zshrc）
 exec zsh                 # 生效
+
+# 5. 驗證 → 見「最小安裝的驗證」，最容易漏的是 fzf 鍵位
+bindkey '^R'             # 應顯示 fzf-history-widget
 ```
 
-第 2 步跳過也能裝 —— `shell/tools.sh` 全程用 `command -v` 守著，
+**第 3 步看到 🔴 就先停下來。** 那些名字之後會做不同的事，而且不會報錯 ——
+這是整個流程唯一有機會造成困擾的地方。要保留舊習慣的，
+裝完在 `.zshrc` 的 source 那行**之後**再定義一次即可（後執行的贏）。
+🟡 和 🟠 通常都是「（無）」。
+
+**第 2 步跳過也能裝** —— `shell/tools.sh` 全程用 `command -v` 守著，
 沒裝的工具就靜默跳過。之後任何時間補裝，下次開終端機自動生效，
-不用再改任何設定。
+不用再改任何設定。`Ctrl-R` 搜歷史連一個外部工具都不需要。
+
+完整驗證清單見 [最小安裝的驗證](#最小安裝的驗證公司機器)；
+`Alt-C` 在 macOS 上要先設 Option 鍵，見 [macOS 額外注意](#macos-額外注意)。
 
 ### 實際會影響什麼
 
@@ -248,10 +259,30 @@ cd ~/dotfiles && ./work-install.sh -u
 
 | ✅ 會做 | ❌ 不會做 |
 |---|---|
-| 載入 46 個 git alias | 碰 `~/.zshrc`（不建符號連結） |
-| 移除 13 個危險 alias | 碰 `~/.gitconfig`（**公司身分在裡面**） |
-| 載入 `git-audit` 函式 | 碰 `~/.p10k.zsh` |
-| | 裝任何套件 |
+| 載入 46 個 git alias | 碰 `~/.gitconfig`（**公司身分在裡面**） |
+| 移除 13 個危險 alias | 碰 `~/.p10k.zsh` |
+| 載入 `git-audit`、`mkcd`、`biggest` | 碰 `PATH`（公司可能有自己包的 toolchain wrapper） |
+| 設歷史長度與行為（`HISTFILE` 不覆蓋） | 建任何符號連結 |
+| 綁 fzf 鍵位、載入 `z` | 裝任何套件（工具要自己 `brew install`） |
+
+唯一被修改的檔案是 `~/.zshrc`，而且只在尾端加一段標記區塊 ——
+`-u` 可以精準移除，`.zshrc` 會回到位元組層級的原狀。
+
+### 兩個已知缺口
+
+都是「不碰 `~/.gitconfig`」與「不假設 `~/dotfiles` 存在」的必然結果：
+
+| 缺什麼 | 為什麼 |
+|---|---|
+| `git st`、`git lg`、`git undo` 那 9 個 | 它們在 `git/.gitconfig` 的 `[alias]` 段，而最小安裝不碰那個檔案 —— 公司的 git 身分在裡面 |
+| `reload`、`dot`、`zshrc` | 在 `zsh/custom/20-aliases.zsh`，那些 alias 依賴 `~/dotfiles` 的路徑結構，只對完整安裝有意義 |
+
+第一個如果在公司也想要，可以之後把 `[alias]` 段拆成獨立檔案，
+在公司機器的 `~/.gitconfig` 加一行 `[include]` 引用它 ——
+那一層是 **git 自己讀的，跨 shell、跨 OS 完全一樣**，
+連原生 Windows 的 PowerShell 都通。目前沒做，要用再說。
+
+`reload` 的替代就是直接打 `exec zsh`。
 
 ### ⚠️ `gp` 和 `gl` 會消失
 
